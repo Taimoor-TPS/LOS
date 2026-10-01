@@ -12,7 +12,7 @@ import {
   pmt,
   trialBalance,
 } from './platformEngine.js';
-import { accountingView, approveApplication, approveDeviation, resetPlatformState } from '../modules/platform/store.js';
+import { approvalGate } from './platformEngine.js';
 
 test('reducing-balance instalment matches the standard formula', () => {
   assert.equal(pmt(0.12, 12, 100000), 8885);
@@ -98,19 +98,18 @@ test('APR is finite for a fee-deducted disbursement', () => {
   assert.ok(apr > 12 && apr < 20);
 });
 
-test('seeded trial balance debits equal credits', () => {
-  resetPlatformState();
-  const view = accountingView();
-  assert.equal(view.trialBalance.balanced, true);
-  assert.equal(view.trialBalance.debit, view.trialBalance.credit);
-  assert.ok(view.trialBalance.debit > 0);
+test('a balanced journal set keeps the trial balance level', () => {
+  const view = trialBalance([
+    { lines: [{ gl: '1310', dr: 1000, cr: 0 }, { gl: '1000', dr: 0, cr: 1000 }] },
+  ]);
+  assert.equal(view.balanced, true);
+  assert.equal(view.debit, view.credit);
+  assert.ok(view.debit > 0);
 });
 
 test('approval is blocked while a policy deviation is open', () => {
-  resetPlatformState();
-  assert.throws(() => approveApplication('PKPFS261001000123'), /blocked/);
-  approveDeviation('DEV-001', 'Salary slip supports a higher net income.');
-  assert.deepEqual(approveApplication('PKPFS261001000123'), { applicationNo: 'PKPFS261001000123', outcome: 'APPROVED' });
+  assert.throws(() => approvalGate({ openDeviations: 1 }), /blocked/);
+  assert.deepEqual(approvalGate({ openDeviations: 0, applicationNo: 'PK01PFS261001000001' }), { applicationNo: 'PK01PFS261001000001', outcome: 'APPROVED' });
 });
 
 test('trial balance helper rejects an unbalanced set', () => {

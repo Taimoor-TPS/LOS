@@ -1,19 +1,19 @@
 import mongoose from 'mongoose';
 
-const auditSchema = new mongoose.Schema(
-  {
-    tenantId: { type: String, index: true },
-    actorId: String,
-    actorName: String,
-    actorRole: String,
-    action: { type: String, index: true },
-    resource: { type: String, index: true },
-    resourceId: { type: String, index: true },
-    detail: { type: mongoose.Schema.Types.Mixed, default: {} },
-    ip: String,
-  },
-  { timestamps: { createdAt: true, updatedAt: false } },
-);
+const auditSchema = new mongoose.Schema({
+  tenantId: { type: String, index: true },
+  actorId: String,
+  actorName: String,
+  actorRole: String,
+  action: { type: String, index: true },
+  resource: { type: String, index: true },
+  resourceId: { type: String, index: true },
+  before: { type: mongoose.Schema.Types.Mixed },
+  after: { type: mongoose.Schema.Types.Mixed },
+  reason: { type: String, default: '' },
+  detail: { type: mongoose.Schema.Types.Mixed, default: {} },
+  ip: String,
+}, { timestamps: { createdAt: true, updatedAt: false } });
 
 auditSchema.index({ createdAt: -1 });
 

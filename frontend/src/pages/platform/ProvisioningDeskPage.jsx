@@ -3,44 +3,43 @@ import { api, money } from '../../api/client.js';
 import { PageTitle } from '../../components/office/OfficeShell.jsx';
 
 export default function ProvisioningDeskPage() {
-  const [data, setData] = useState(null);
+  const [regimes, setRegimes] = useState([]);
+  const [loans, setLoans] = useState([]);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    api('/api/platform/provisioning').then(setData).catch((err) => setError(err.message));
+    api('/api/provisioning/regimes?pageSize=20').then((data) => setRegimes(data.items || [])).catch((err) => setError(err.message));
+    api('/api/loans?pageSize=50').then((data) => setLoans(data.items || [])).catch(() => {});
   }, []);
 
-  if (!data) return <p>{error || 'Running the provision comparison…'}</p>;
+  const outstanding = loans.reduce((sum, loan) => sum + Number(loan.principalOutstanding || 0), 0);
+  const ecl = loans.reduce((sum, loan) => sum + Number(loan.eclAmount || 0), 0);
+  const regulatory = loans.reduce((sum, loan) => sum + Number(loan.regulatoryProvision || 0), 0);
+  const booked = loans.reduce((sum, loan) => sum + Number(loan.bookedProvision || 0), 0);
 
   return (
     <div>
-      <PageTitle kicker={data.regime} title="Provisioning">
-        <span className="chip info">As of {data.asOf}</span>
-      </PageTitle>
+      <PageTitle kicker={regimes[0]?.name || 'Classification regime'} title="Provisioning" />
+      {error && <p className="bad">{error}</p>}
       <div className="kpis">
-        <article className="kpi"><span>Outstanding</span><b>{money(data.totals.outstanding)}</b></article>
-        <article className="kpi"><span>IFRS 9 ECL</span><b>{money(data.totals.ecl)}</b></article>
-        <article className="kpi"><span>Prudential</span><b>{money(data.totals.regulatory)}</b></article>
-        <article className="kpi"><span>Booked</span><b>{money(data.totals.booked)}</b></article>
+        <article className="kpi"><span>Outstanding</span><b>{money(outstanding)}</b></article>
+        <article className="kpi"><span>IFRS 9 ECL</span><b>{money(ecl)}</b></article>
+        <article className="kpi"><span>Prudential</span><b>{money(regulatory)}</b></article>
+        <article className="kpi"><span>Booked</span><b>{money(booked)}</b></article>
       </div>
-      <p className="banner">Stage 3 books the higher of expected credit loss and the prudential requirement. Stage 1 and 2 book 12-month or lifetime ECL. Rates are seeded defaults for the demo.</p>
       <section className="panel">
         <table>
-          <thead>
-            <tr><th>Loan</th><th>Customer</th><th>DPD</th><th>Class</th><th>Stage</th><th>Outstanding</th><th>ECL</th><th>PR</th><th>Booked</th></tr>
-          </thead>
+          <thead><tr><th>Loan</th><th>DPD</th><th>Class</th><th>Stage</th><th>Outstanding</th><th>ECL</th><th>Booked</th></tr></thead>
           <tbody>
-            {data.rows.map((row) => (
-              <tr key={row.loanAccountNo}>
-                <td>{row.loanAccountNo}</td>
-                <td>{row.customer}</td>
-                <td>{row.dpd}</td>
-                <td>{row.classification}</td>
-                <td>{row.stage}{row.higherOf ? ' · higher of' : ''}</td>
-                <td>{money(row.outstanding)}</td>
-                <td>{money(row.ecl)}</td>
-                <td>{money(row.regulatory)}</td>
-                <td>{money(row.booked)}</td>
+            {loans.map((loan) => (
+              <tr key={loan._id}>
+                <td>{loan.loanAccountNo}</td>
+                <td>{loan.dpd}</td>
+                <td>{loan.regulatoryClassification}</td>
+                <td>{loan.ifrs9Stage}</td>
+                <td>{money(loan.principalOutstanding)}</td>
+                <td>{money(loan.eclAmount)}</td>
+                <td>{money(loan.bookedProvision)}</td>
               </tr>
             ))}
           </tbody>

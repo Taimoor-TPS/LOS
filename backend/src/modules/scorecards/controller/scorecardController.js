@@ -5,7 +5,7 @@ import { parse } from '../../../middleware/validate.js';
 import { asyncHandler, httpError } from '../../../security/http.js';
 import { writeAudit } from '../../../security/audit.js';
 import { scoreApplication } from '../../../engine/scoreboard.js';
-import { CHECKER_ROLES } from '../../../security/roles.js';
+import { checkSoD } from '../../../security/rbac.js';
 
 const factor = z.object({
   key: z.string(),
@@ -60,8 +60,8 @@ export const submit = asyncHandler(async (req, res) => {
 export const approve = asyncHandler(async (req, res) => {
   const card = await Scorecard.findById(req.params.id);
   if (!card) throw httpError(404, 'Scorecard not found');
-  if (!CHECKER_ROLES.includes(req.user.role)) throw httpError(403, 'Your role cannot approve a scorecard');
-  if (card.makerId === req.user.id) throw httpError(403, 'Maker cannot approve their own scorecard');
+  const sod = await checkSoD(req.user, 'config:publish', card, { reason: req.body?.reason });
+  card.selfAuthorised = Boolean(sod.selfAuthorised);
   await Scorecard.updateMany({ code: card.code, status: 'active' }, { status: 'retired', champion: false });
   card.status = 'active';
   card.champion = true;

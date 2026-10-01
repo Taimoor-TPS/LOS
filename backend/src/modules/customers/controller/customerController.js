@@ -4,9 +4,9 @@ import { parse } from '../../../middleware/validate.js';
 import { asyncHandler, httpError } from '../../../security/http.js';
 import { decryptField, maskCnic } from '../../../security/crypto.js';
 import { writeAudit } from '../../../security/audit.js';
-import { ROLES } from '../../../security/roles.js';
-
-const REVEAL_ROLES = [ROLES.COMPLIANCE, ROLES.AUDITOR, ROLES.SYSTEM_ADMIN];
+function canReveal(req) {
+  return req.user?.permissions?.includes('customer:view_full_pii') || req.user?.principal === 'CUSTOMER';
+}
 
 export function presentCustomer(customer, { reveal = false } = {}) {
   return {
@@ -48,7 +48,7 @@ export function presentCustomer(customer, { reveal = false } = {}) {
 }
 
 async function ownOrStaff(req, customer) {
-  if (req.user.role === ROLES.CUSTOMER && req.user.customerId !== String(customer._id)) {
+  if (req.user.principal === 'CUSTOMER' && req.user.customerId !== String(customer._id)) {
     throw httpError(403, 'You do not have access to this customer');
   }
 }
@@ -70,12 +70,12 @@ export const getOne = asyncHandler(async (req, res) => {
   const customer = await Customer.findById(req.params.id);
   if (!customer) throw httpError(404, 'Customer not found');
   await ownOrStaff(req, customer);
-  const reveal = req.query.reveal === '1' && REVEAL_ROLES.includes(req.user.role);
-  if (reveal) {
+  const reveal = req.query.reveal === '1' && canReveal(req);
+  if (reveal && req.user.principal !== 'CUSTOMER') {
     await writeAudit(req, { action: 'pii_reveal', resource: 'customer', resourceId: customer._id, detail: { field: 'cnic' } });
   }
   const consents = await Consent.find({ customerId: customer._id }).sort({ createdAt: -1 }).lean();
-  res.json({ customer: presentCustomer(customer, { reveal: reveal || req.user.role === ROLES.CUSTOMER }), consents });
+  res.json({ customer: presentCustomer(customer, { reveal: reveal || req.user.principal === 'CUSTOMER' }), consents });
 });
 
 export const grantConsent = asyncHandler(async (req, res) => {

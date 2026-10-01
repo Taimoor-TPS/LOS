@@ -1,9 +1,13 @@
 import { Router } from 'express';
-import { requireAuth, requireRole } from '../../../security/auth.js';
-import { CASE_READ_ROLES, ROLES } from '../../../security/roles.js';
+import { env } from '../../../config/env.js';
+import { requireAuth, requirePermission } from '../../../security/auth.js';
 import { list } from '../controller/integrationController.js';
 
 const router = Router();
-router.get('/', requireAuth, requireRole(...CASE_READ_ROLES, ROLES.SYSTEM_ADMIN), list);
-
+router.use(requireAuth);
+router.get('/', requirePermission('integration:view_logs'), list);
+router.use((req, res, next) => {
+  if (!env.featuresExtended && req.path !== '/') return res.status(404).json({ code: 'NOT_FOUND', message: 'Not found' });
+  next();
+});
 export default router;

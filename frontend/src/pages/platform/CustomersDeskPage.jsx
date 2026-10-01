@@ -9,8 +9,8 @@ export default function CustomersDeskPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    api('/api/customers').then((data) => setCustomers(data.customers || [])).catch((err) => setError(err.message));
-    api('/api/platform/loans').then((data) => setLoans((data.loans || []).filter((loan) => loan.writeOffSubState))).catch(() => {});
+    api('/api/customers?pageSize=50').then((data) => setCustomers(data.items || data.customers || [])).catch((err) => setError(err.message));
+    api('/api/loans?pageSize=50').then((data) => setLoans((data.items || []).filter((loan) => loan.writeOff?.subState))).catch(() => {});
   }, []);
 
   return (
@@ -44,7 +44,7 @@ export default function CustomersDeskPage() {
                 <td>{loan.cifName}</td>
                 <td>{loan.idNumber}</td>
                 <td><Link to={`/office/loans/${loan.loanAccountNo}`}>{loan.loanAccountNo}</Link></td>
-                <td><span className="chip bad">{loan.writeOffSubState}</span></td>
+                <td><span className="chip bad">{loan.writeOff?.subState}</span></td>
               </tr>
             ))}
           </tbody>

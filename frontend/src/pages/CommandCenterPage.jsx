@@ -20,7 +20,7 @@ export default function CommandCenterPage() {
   ];
   return (
     <div>
-      <PageTitle kicker="HBL LOS" title="Command center" />
+      <PageTitle kicker="Lending platform" title="Command center" />
       <div className="kpis">
         {cards.map(([label, value]) => <article className="kpi" key={label}><span className="muted">{label}</span><b>{value}</b></article>)}
       </div>

@@ -1,9 +1,12 @@
 import { Router } from 'express';
-import { requireAuth, requireRole } from '../../../security/auth.js';
-import { CASE_READ_ROLES, ROLES } from '../../../security/roles.js';
+import { env } from '../../../config/env.js';
+import { requireAuth, requirePermission } from '../../../security/auth.js';
 import { commandCenter } from '../controller/reportingController.js';
 
 const router = Router();
-router.get('/command-center', requireAuth, requireRole(...CASE_READ_ROLES, ROLES.MARKETING, ROLES.CREDIT_POLICY, ROLES.MODEL_RISK), commandCenter);
-
+router.use(requireAuth);
+router.get('/command-center', (req, res, next) => {
+  if (!env.featuresExtended) return res.status(404).json({ code: 'NOT_FOUND', message: 'Not found' });
+  return requirePermission('report:view')(req, res, next);
+}, commandCenter);
 export default router;

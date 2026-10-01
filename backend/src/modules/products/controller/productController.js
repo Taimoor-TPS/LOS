@@ -6,17 +6,13 @@ import { asyncHandler, httpError } from '../../../security/http.js';
 import { processingFee, quotePayment, rateCaption } from '../../../engine/money.js';
 import { assessAffordability } from '../../../engine/affordability.js';
 import { loadPolicy } from '../../../engine/decisionService.js';
-import { ROLES } from '../../../security/roles.js';
-
 export const list = asyncHandler(async (req, res) => {
-  const filter = { status: 'active' };
+  const filter = { status: { $in: ['active', 'PUBLISHED', 'DRAFT', 'PENDING_APPROVAL'] }, deletedAt: null };
+  if (req.user.principal === 'CUSTOMER') filter.status = { $in: ['active', 'PUBLISHED'] };
   if (req.query.family) filter.family = String(req.query.family);
-  if (req.user.role === ROLES.CUSTOMER) {
-    const customer = await Customer.findById(req.user.customerId).lean();
-    if (customer) filter.jurisdiction = customer.jurisdiction;
-  }
+  if (req.query.status) filter.status = String(req.query.status);
   const products = await Product.find(filter).sort({ family: 1, name: 1 }).lean();
-  res.json({ products });
+  res.json({ products, items: products, page: 1, pageSize: products.length, total: products.length });
 });
 
 export const getOne = asyncHandler(async (req, res) => {
@@ -34,7 +30,7 @@ export const quote = asyncHandler(async (req, res) => {
   }), req.body);
   const product = await Product.findOne({ code: body.productCode, status: 'active' }).lean();
   if (!product) throw httpError(404, 'Product not found');
-  const customerId = req.user.role === ROLES.CUSTOMER ? req.user.customerId : (body.customerId || req.user.customerId);
+  const customerId = req.user.principal === 'CUSTOMER' ? req.user.customerId : (body.customerId || req.user.customerId);
   const customer = await Customer.findById(customerId).lean();
   if (!customer) throw httpError(404, 'Customer not found');
   const policy = await loadPolicy({
@@ -88,7 +84,7 @@ const createBody = z.object({
   name: z.string().trim().min(1),
   nameUr: z.string().optional(),
   summary: z.string().optional(),
-  family: z.enum(['conventional', 'islamic']),
+  family: z.string().min(2),
   contractType: z.string().trim().min(1),
   jurisdiction: z.string().optional(),
   currency: z.string().optional(),
@@ -115,7 +111,7 @@ export const create = asyncHandler(async (req, res) => {
   const product = await Product.create({
     jurisdiction: 'PK',
     currency: 'PKR',
-    status: 'active',
+    status: 'DRAFT',
     channels: ['mobile', 'internet', 'branch', 'rm', 'contact_centre', 'dealer'],
     showInCatalogue: true,
     amountStep: 5000,

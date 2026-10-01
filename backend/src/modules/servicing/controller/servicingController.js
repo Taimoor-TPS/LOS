@@ -8,16 +8,15 @@ import { buildContractSchedule, quotePayment } from '../../../engine/money.js';
 import { toFeatures, loadPolicy, activeScorecard } from '../../../engine/decisionService.js';
 import { evaluateApplication } from '../../../engine/decisionEngine.js';
 import { Rule } from '../../rules/model/Rule.js';
-import { ROLES } from '../../../security/roles.js';
 
 async function ownLoan(req, loan) {
-  if (req.user.role === ROLES.CUSTOMER && String(loan.customerId) !== req.user.customerId) {
+  if (req.user.principal === 'CUSTOMER' && String(loan.customerId) !== req.user.customerId) {
     throw httpError(403, 'You do not have access to this loan');
   }
 }
 
 export const mine = asyncHandler(async (req, res) => {
-  const filter = req.user.role === ROLES.CUSTOMER ? { customerId: req.user.customerId } : { tenantId: req.user.tenantId };
+  const filter = req.user.principal === 'CUSTOMER' ? { customerId: req.user.customerId } : { tenantId: req.user.tenantId };
   const loans = await LoanAccount.find(filter).sort({ createdAt: -1 }).lean();
   res.json({ loans });
 });

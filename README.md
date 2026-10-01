@@ -1,8 +1,12 @@
-# TPS LOS
+# Lending platform
 
-Loan origination for a demo bank, Noor Horizon. Customer journey is the phone on the right. The back office is the credit desk.
+Origination, servicing, collections and the general ledger for the demo bank configured in `bank.profile` (default: Noor Horizon Bank).
 
-## Run
+## Setup
+
+1. Copy `backend/.env.example` to `backend/.env` and set `JWT_SECRET`, `FIELD_ENCRYPTION_KEY` and `ADMIN_INITIAL_PASSWORD`. The API will not start without the first two. Seed will not run without the third.
+2. Start MongoDB as a single-node replica set: `docker compose up -d mongo`
+3. Install and seed:
 
 ```bash
 npm run install:all
@@ -12,17 +16,23 @@ npm run dev:api
 npm run dev:web
 ```
 
-Open http://localhost:5173
+4. Open http://localhost:5173/office/login and sign in as `admin`. The first login forces a password change. The initial password is only the value you put in `ADMIN_INITIAL_PASSWORD`.
 
-Staff password for every back-office user: `Los@Demo2026`
+`npm run seed` creates one back-office user and reference data. It does not create customers, applications or loans. `npm run seed:sample` is optional and is not part of the default demo.
 
-Sign in as Omar Siddiqui to review Farooq, Sadia Rahman for four-eyes and committee support, Hina Baig for the second committee vote, Farah Naveed for fulfilment, and Noman Dealer for the counter.
+Set `DEMO_MODE=true` to show the SMS inbox beside the phone. Set `VITE_FEATURES_EXTENDED=true` when starting the web app if you want the extra desks (campaigns, dealer, schemes, and the rest).
 
-## What is configured
+## Demo identity suffixes
 
-Regulatory DBR caps, price bands, delegation, fraud thresholds, Shariah step lists and reason text resolve from general to specific: system, jurisdiction, tenant, entity, segment, product, channel. Scorecards and extra rules are versioned with maker-checker. Pakistan, Saudi and UAE packs are illustrative and must be replaced from the current circular before any live lending.
+Mock identity, bureau and sanctions results depend on the last four digits of the CNIC:
 
-## Security in this build
+| Suffix | Result |
+|---|---|
+| 0001 | Clean bureau |
+| 0002 | Write-off hit, declined at pre-screen |
+| 0003 | Sanctions potential match, compliance hold |
+| 0004 | Identity document expired, hard stop |
+| 0005 | Face match below threshold, manual review |
+| 0006 | Bureau timeout, fallback |
 
-HttpOnly session cookie, bcrypt passwords, login lockout, AES-256-GCM for CNIC and phone, masked identities on staff lists, role checks, maker-checker on policy changes, append-only decision records and audit log, consent required before a bureau pull, helmet, and a client header on browser writes. There is no separate security or theme file in `document`; controls follow the product NFR section, and colours live in `frontend/src/theme/tokens.css`.
-"# LOS" 
+The click path is in `docs/DEMO_SCRIPT.md`.

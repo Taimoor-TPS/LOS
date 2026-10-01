@@ -4,7 +4,7 @@ import { parse } from '../../../middleware/validate.js';
 import { asyncHandler, httpError } from '../../../security/http.js';
 import { writeAudit } from '../../../security/audit.js';
 import { matchRule } from '../../../engine/rulesEngine.js';
-import { CHECKER_ROLES } from '../../../security/roles.js';
+import { checkSoD } from '../../../security/rbac.js';
 
 export const list = asyncHandler(async (req, res) => {
   const rules = await Rule.find().sort({ stage: 1, priority: 1 }).lean();
@@ -49,8 +49,8 @@ export const submit = asyncHandler(async (req, res) => {
 export const approve = asyncHandler(async (req, res) => {
   const rule = await Rule.findById(req.params.id);
   if (!rule) throw httpError(404, 'Rule not found');
-  if (!CHECKER_ROLES.includes(req.user.role)) throw httpError(403, 'Your role cannot approve a rule');
-  if (rule.makerId === req.user.id) throw httpError(403, 'Maker cannot approve their own rule');
+  const sod = await checkSoD(req.user, 'config:publish', rule, { reason: req.body?.reason });
+  rule.selfAuthorised = Boolean(sod.selfAuthorised);
   await Rule.updateMany({ code: rule.code, status: 'active' }, { status: 'retired', enabled: false });
   rule.status = 'active';
   rule.checkerId = req.user.id;

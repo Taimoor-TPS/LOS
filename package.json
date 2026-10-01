@@ -4,6 +4,7 @@
   "scripts": {
     "install:all": "npm install --prefix backend && npm install --prefix frontend",
     "seed": "npm run seed --prefix backend",
+    "seed:sample": "npm run seed:sample --prefix backend",
     "test": "npm test --prefix backend",
     "dev:api": "npm run dev --prefix backend",
     "dev:web": "npm run dev --prefix frontend"

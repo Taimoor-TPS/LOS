@@ -3,7 +3,7 @@ import { api } from '../api/client.js';
 import { PageTitle } from '../components/office/OfficeShell.jsx';
 
 export default function ConfigurationEnginePage() {
-  const [form, setForm] = useState({ key: 'regulatory.dbr', jurisdiction: 'PK', segment: 'salaried', productCode: 'HBL-CON-PER-01', channel: 'app' });
+  const [form, setForm] = useState({ key: 'regulatory.dbr', jurisdiction: 'PK', segment: 'salaried', productCode: 'PF-SAL', channel: 'app' });
   const [resolved, setResolved] = useState(null);
 
   async function resolve(event) {

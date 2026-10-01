@@ -22,7 +22,7 @@ export default function ApplicationsDeskPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    api('/api/applications').then((data) => setRows(data.applications || [])).catch((err) => setError(err.message));
+    api('/api/applications?pageSize=50').then((data) => setRows(data.items || data.applications || [])).catch((err) => setError(err.message));
   }, []);
 
   return (

@@ -1,13 +1,11 @@
 import { Router } from 'express';
-import { requireAuth, requireRole } from '../../../security/auth.js';
-import { CASE_READ_ROLES, ROLES } from '../../../security/roles.js';
+import { requireAuth, requireCustomer, requireStaffOrCustomer } from '../../../security/auth.js';
 import { acceptRequest, getOne, mine, requestChange } from '../controller/servicingController.js';
 
 const router = Router();
 router.use(requireAuth);
-router.get('/loans', requireRole(ROLES.CUSTOMER, ...CASE_READ_ROLES), mine);
-router.get('/loans/:id', requireRole(ROLES.CUSTOMER, ...CASE_READ_ROLES), getOne);
-router.post('/loans/:id/requests', requireRole(ROLES.CUSTOMER, ROLES.OPERATIONS, ROLES.RELATIONSHIP_MANAGER), requestChange);
-router.post('/loans/:id/requests/:requestId/accept', requireRole(ROLES.CUSTOMER, ROLES.OPERATIONS), acceptRequest);
-
+router.get('/loans', requireStaffOrCustomer('loan:view'), mine);
+router.get('/loans/:id', requireStaffOrCustomer('loan:view'), getOne);
+router.post('/loans/:id/requests', requireStaffOrCustomer('loan:reschedule'), requestChange);
+router.post('/loans/:id/requests/:requestId/accept', requireCustomer, acceptRequest);
 export default router;

@@ -1,26 +1,51 @@
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { api } from '../../api/client.js';
 import { useAuth, useLocale } from '../../context/AppState.jsx';
 
 export default function CustomerFrame() {
   const { user } = useAuth();
   const { locale, setLocale, dir } = useLocale();
   const location = useLocation();
-  const loggedIn = user?.role === 'customer';
-  const inWizard = /^\/(apply|verify|decision|key-facts|sign|eligibility|pay|settlement)\//.test(location.pathname);
+  const [open, setOpen] = useState(true);
+  const [messages, setMessages] = useState([]);
+  const loggedIn = user?.principal === 'CUSTOMER';
+  const inWizard = /^\/(apply|documents|review|register|eligibility|pay|offer)\//.test(location.pathname) || location.pathname.startsWith('/register');
+
+  useEffect(() => {
+    let alive = true;
+    async function poll() {
+      try {
+        const mobile = sessionStorage.getItem('regMobile') || '';
+        const data = await api(`/api/channel/demo/outbox${mobile ? `?mobile=${encodeURIComponent(mobile)}` : ''}`);
+        if (alive) setMessages(data.items || []);
+      } catch {
+        if (alive) setMessages([]);
+      }
+    }
+    poll();
+    const id = setInterval(poll, 3000);
+    return () => { alive = false; clearInterval(id); };
+  }, [location.pathname]);
+
   return (
     <div className="stage">
       <section className="stage-copy">
         <div>
           <div className="eyebrow">Lending platform</div>
           <h1>From the offer to the last instalment.</h1>
-          <p>Check eligibility, apply, sign the key facts, then repay from the same phone. Staff run origination, servicing, collections and the general ledger.</p>
-          <div className="stage-steps">
-            {['See the product', 'Check eligibility', 'Apply and sign', 'Track the decision', 'Repay the loan'].map((step, index) => (
-              <span key={step}><i>{index + 1}</i>{step}</span>
-            ))}
-          </div>
+          <p>Register, check eligibility, apply, accept the key facts, then repay from the same phone.</p>
         </div>
-        <div className="eyebrow">Illustrative demo · not a live bank offer</div>
+        <aside className="sms-inbox">
+          <button type="button" className="ghost" onClick={() => setOpen((value) => !value)}>{open ? 'Hide SMS inbox' : 'Show SMS inbox'}</button>
+          {open && (
+            <div>
+              {(messages.length ? messages : [{ _id: 'empty', body: 'Codes sent by the bank appear here.' }]).map((row) => (
+                <p key={row._id}>{row.body}</p>
+              ))}
+            </div>
+          )}
+        </aside>
       </section>
       <div className="device-wrap">
         <div className="device" dir={dir}>

@@ -7,8 +7,6 @@ import { asyncHandler, httpError } from '../../../security/http.js';
 import { writeAudit } from '../../../security/audit.js';
 import { identifyProspect } from '../../../engine/prospectEngine.js';
 import { loadPolicy } from '../../../engine/decisionService.js';
-import { ROLES } from '../../../security/roles.js';
-
 export const myOffers = asyncHandler(async (req, res) => {
   const offers = await Offer.find({ customerId: req.user.customerId, status: { $in: ['issued', 'viewed'] }, holdout: false }).sort({ limit: -1 }).lean();
   const products = await Product.find({ code: { $in: offers.map((offer) => offer.productCode) } }).lean();

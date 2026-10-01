@@ -1,15 +1,13 @@
 import { Router } from 'express';
-import { requireAuth, requireRole } from '../../../security/auth.js';
-import { ROLES } from '../../../security/roles.js';
+import { requireAuth, requirePermission, requireCustomer } from '../../../security/auth.js';
 import { createCampaign, listCampaigns, listOffers, myOffers, runCampaign, viewOffer } from '../controller/engagementController.js';
 
 const router = Router();
 router.use(requireAuth);
-router.get('/offers/mine', requireRole(ROLES.CUSTOMER), myOffers);
-router.post('/offers/:id/view', requireRole(ROLES.CUSTOMER), viewOffer);
-router.get('/offers', requireRole(ROLES.MARKETING, ROLES.SYSTEM_ADMIN, ROLES.CREDIT_POLICY), listOffers);
-router.get('/campaigns', requireRole(ROLES.MARKETING, ROLES.SYSTEM_ADMIN, ROLES.CREDIT_POLICY, ROLES.AUDITOR), listCampaigns);
-router.post('/campaigns', requireRole(ROLES.MARKETING, ROLES.SYSTEM_ADMIN), createCampaign);
-router.post('/campaigns/:id/run', requireRole(ROLES.MARKETING, ROLES.SYSTEM_ADMIN), runCampaign);
-
+router.get('/offers/mine', requireCustomer, myOffers);
+router.post('/offers/:id/view', requireCustomer, viewOffer);
+router.get('/offers', requirePermission('product:view'), listOffers);
+router.get('/campaigns', requirePermission('config:view'), listCampaigns);
+router.post('/campaigns', requirePermission('config:edit'), createCampaign);
+router.post('/campaigns/:id/run', requirePermission('config:publish'), runCampaign);
 export default router;

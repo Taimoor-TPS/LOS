@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TPS LOS Horizon — User Manual</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,520;9..144,640&family=Outfit:wght@380;500;640&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #142033;
+      --ink-soft: #3a4d63;
+      --cream: #f3eee6;
+      --paper: #fbf7f1;
+      --white: #fffdfb;
+      --brass: #a5793a;
+      --pine: #0f6b53;
+      --pine-deep: #0c3d34;
+      --pine-2: #d9f0e7;
+      --clay: #9d4036;
+      --clay-2: #f8e6e1;
+      --amber: #8d5a12;
+      --amber-2: #f8ecc9;
+      --line: rgba(20, 32, 51, 0.12);
+      --display: "Fraunces", Georgia, serif;
+      --ui: "Outfit", "Segoe UI", sans-serif;
+      --mono: "DM Mono", ui-monospace, monospace;
+      --side: 280px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: var(--ui);
+      color: var(--ink);
+      background: var(--cream);
+      line-height: 1.55;
+    }
+    a { color: var(--pine-deep); }
+    code, .mono { font-family: var(--mono); font-size: 0.86em; }
+    .layout { display: grid; grid-template-columns: var(--side) 1fr; min-height: 100vh; }
+    nav.toc {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: auto;
+      background: var(--ink);
+      color: #f6f1e8;
+      padding: 28px 18px 40px;
+    }
+    nav.toc .brand { font-family: var(--display); font-size: 22px; line-height: 1.15; }
+    nav.toc .brand small { display: block; font-family: var(--ui); letter-spacing: 0.14em; text-transform: uppercase; font-size: 11px; color: #e7d3a4; margin-bottom: 4px; }
+    nav.toc .switch { display: flex; gap: 6px; margin: 18px 0 8px; }
+    nav.toc .switch button {
+      flex: 1;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: transparent;
+      color: #f6f1e8;
+      border-radius: 999px;
+      padding: 6px 8px;
+      font: inherit;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    nav.toc .switch button.on { background: #e7d3a4; color: var(--ink); border-color: #e7d3a4; }
+    nav.toc .group { margin-top: 18px; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #e7d3a4; }
+    nav.toc a {
+      display: block;
+      color: #f6f1e8;
+      text-decoration: none;
+      font-size: 14px;
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    nav.toc a:hover { color: #e7d3a4; }
+    main { padding: 48px 56px 80px; max-width: 980px; }
+    header.hero h1 { font-family: var(--display); font-weight: 520; font-size: 52px; line-height: 1.05; margin: 8px 0 12px; }
+    .eyebrow { letter-spacing: 0.14em; text-transform: uppercase; font-size: 12px; color: var(--brass); }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+    .meta span, .note, .callout {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 8px 12px;
+      font-size: 14px;
+    }
+    .note { background: var(--amber-2); border-color: transparent; color: var(--amber); margin: 16px 0 24px; }
+    h2 { font-family: var(--display); font-weight: 520; font-size: 34px; margin: 42px 0 10px; }
+    h3 { font-family: var(--display); font-weight: 520; font-size: 24px; margin: 28px 0 8px; }
+    h4 { margin: 20px 0 8px; font-size: 16px; }
+    p { margin: 8px 0 12px; }
+    ul, ol { margin: 8px 0 16px; padding-left: 22px; }
+    li { margin: 4px 0; }
+    table { width: 100%; border-collapse: collapse; background: var(--white); border-radius: 14px; overflow: hidden; margin: 12px 0 20px; font-size: 14.5px; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { background: #efe8dc; font-weight: 640; font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; }
+    tr:last-child td { border-bottom: 0; }
+    .part {
+      margin-top: 28px;
+      padding-top: 8px;
+    }
+    .part > h2 { border-top: 1px solid var(--line); padding-top: 28px; }
+    .flow { display: grid; gap: 8px; margin: 16px 0 20px; }
+    .flow .step, .flow .branch {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 14px;
+    }
+    .flow .branch { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; background: transparent; border: 0; padding: 0; }
+    .flow .branch div { background: var(--white); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+    .pill { display: inline-block; border-radius: 999px; padding: 2px 8px; font-size: 12px; background: var(--pine-2); color: var(--pine-deep); }
+    .pill.warn { background: var(--amber-2); color: var(--amber); }
+    .pill.bad { background: var(--clay-2); color: var(--clay); }
+    footer { margin-top: 48px; color: var(--ink-soft); font-size: 14px; }
+    .hidden { display: none !important; }
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      nav.toc { position: relative; height: auto; }
+      main { padding: 28px 18px 64px; }
+      header.hero h1 { font-size: 36px; }
+      .flow .branch { grid-template-columns: 1fr; }
+      table { display: block; overflow-x: auto; }
+    }
+    @media print {
+      nav.toc { display: none; }
+      .layout { display: block; }
+      main { max-width: none; padding: 0; }
+      a { color: inherit; text-decoration: none; }
+      h2 { break-before: page; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <nav class="toc" aria-label="Contents">
+      <div class="brand"><small>TPS LOS</small>Horizon manual</div>
+      <div class="switch" role="tablist">
+        <button type="button" class="on" data-filter="all">All</button>
+        <button type="button" data-filter="customer">Customers</button>
+        <button type="button" data-filter="office">Back office</button>
+      </div>
+      <div class="group">Start</div>
+      <a href="#about">What Horizon does</a>
+      <a href="#start">How to start</a>
+      <div class="group">Customers</div>
+      <a href="#part-a">Customer guide</a>
+      <a href="#a1">Home</a>
+      <a href="#a2">Simulate</a>
+      <a href="#a3">Application</a>
+      <a href="#a4">Verification</a>
+      <a href="#a5">Decision</a>
+      <a href="#a6">Key facts</a>
+      <a href="#a7">Sign</a>
+      <a href="#a8">Funds</a>
+      <a href="#a9">Loans</a>
+      <a href="#a10">Top-up</a>
+      <a href="#a11">Profile</a>
+      <div class="group">Back office</div>
+      <a href="#part-b">Back-office guide</a>
+      <a href="#b1">Who can sign in</a>
+      <a href="#b2">Roles</a>
+      <a href="#b3">Menu map</a>
+      <a href="#b4">Command center</a>
+      <a href="#b5">Queue</a>
+      <a href="#b6">Workbench</a>
+      <a href="#b7">Committee</a>
+      <a href="#b8">Fulfilment</a>
+      <a href="#b9">Shariah</a>
+      <a href="#b10">Dealer</a>
+      <a href="#b11">Relationship</a>
+      <a href="#b12">Early warning</a>
+      <a href="#b13">Campaigns</a>
+      <a href="#b14">Products</a>
+      <a href="#b15">Rules</a>
+      <a href="#b16">Scorecards</a>
+      <a href="#b17">Regulatory packs</a>
+      <a href="#b18">Configuration</a>
+      <a href="#b19">Schemes</a>
+      <a href="#b20">Models</a>
+      <a href="#b21">MIS</a>
+      <a href="#b22">Audit</a>
+      <a href="#b23">User access</a>
+      <div class="group">Shared</div>
+      <a href="#part-c">How a case moves</a>
+      <a href="#part-d">Worked examples</a>
+      <a href="#part-e">Troubleshooting</a>
+      <a href="#part-f">Glossary</a>
+      <a href="#part-g">Demo customers</a>
+    </nav>
+    <main>
+      <header class="hero">
+        <div class="eyebrow">Noor Horizon Bank · Demo build</div>
+        <h1>User manual</h1>
+        <p>How to borrow on the customer phone, and how the credit desk works the cases the engine cannot finish alone.</p>
+        <div class="meta">
+          <span>Product: TPS LOS Horizon</span>
+          <span>Audience: customers and back office</span>
+          <span>Customer app: <a href="http://localhost:5173">localhost:5173</a></span>
+          <span>Staff desk: <a href="http://localhost:5173/office/login">/office/login</a></span>
+        </div>
+        <p class="note">Figures, rates, regulatory packs, and decisions in the demo are illustrative. They are not a live bank offer and they are not a substitute for the current circular of the State Bank of Pakistan, SAMA, or the Central Bank of the UAE.</p>
+      </header>
+
+      <section id="about" data-audience="both">
+        <h2>1. What Horizon does</h2>
+        <p>Horizon is a loan origination system. A customer can see a personalised offer, try an amount, give consent, receive a decision with a reason, read the key facts, sign, and — when every required step is complete — receive funds. Staff work the cases the engine cannot finish alone: reviews, four-eyes approvals, credit committee, Shariah evidence, and disbursement.</p>
+        <p>The same policy drives both sides. Scorecards, affordability caps, rules, pricing bands, and delegation limits are configuration. A change in the engine changes the next decision. It does not require a software release.</p>
+        <table>
+          <thead><tr><th>Entrance</th><th>Who</th><th>Address</th></tr></thead>
+          <tbody>
+            <tr><td>Customer phone</td><td>Borrowers</td><td><code>/</code></td></tr>
+            <tr><td>Staff desk</td><td>Bank and dealer users</td><td><code>/office/login</code></td></tr>
+          </tbody>
+        </table>
+        <p>A customer session stays on the phone. A staff session stays on the desk.</p>
+      </section>
+
+      <section id="start" data-audience="both">
+        <h2>2. How to start a session</h2>
+        <h3>Customers</h3>
+        <ol>
+          <li>Open the welcome screen.</li>
+          <li>Choose a person. The featured walk-throughs are Ayesha Khan, Sana Iqbal, Hamza Qureshi, and Imran Farooqi. Other seeded customers exist in the directory and can be used the same way.</li>
+          <li>Horizon signs that person in and opens <strong>Home</strong>.</li>
+        </ol>
+        <p>There is no customer password on the welcome screen. The demo enters the chosen profile directly.</p>
+        <h3>Staff</h3>
+        <ol>
+          <li>Open <strong>Staff entrance</strong> from the welcome screen, or go to <code>/office/login</code>.</li>
+          <li>Type the work email and password, or tap a name in the directory. Tapping a name fills the email and the shared demo password.</li>
+          <li>Choose <strong>Enter the desk</strong>.</li>
+        </ol>
+        <p>Demo password for every staff user: <code>Los@Demo2026</code>.</p>
+        <p>Dealers land on the dealer counter. Everyone else lands on the command center. The left menu shows only the screens that role is allowed to open.</p>
+        <p>Sign out from the bottom of the menu (staff) or from <strong>Profile</strong> (customers).</p>
+        <h3>Language on the phone</h3>
+        <p>The status bar offers <strong>en</strong>, <strong>ur</strong>, and <strong>ar</strong>. Urdu and Arabic switch the phone to right-to-left. Labels for Home, Simulate, Loans, Profile, and the offer shelf follow the chosen language. Decision reasons are stored in English, Urdu, and Arabic and follow the same setting.</p>
+      </section>
+
+      <section class="part" id="part-a" data-audience="customer">
+        <h2>Part A — Customer guide</h2>
+        <p>The phone has four tabs once you are signed in.</p>
+        <table>
+          <thead><tr><th>Tab</th><th>What it is for</th></tr></thead>
+          <tbody>
+            <tr><td>Home</td><td>Offers prepared for you</td></tr>
+            <tr><td>Simulate</td><td>Try an amount and tenor</td></tr>
+            <tr><td>Loans</td><td>Facilities already booked</td></tr>
+            <tr><td>Profile</td><td>Your details, consent, and sign-out</td></tr>
+          </tbody>
+        </table>
+        <p>The journey the bank designed is: see the offer, try the amount, verify once, read the facts, receive the funds.</p>
+
+        <h3 id="a1">A1. Home — offers for you</h3>
+        <p>Home greets you by first name and shows pre-approved offers. Each card names the product, explains why it is there, and shows a limit.</p>
+        <p>Filter the shelf with <strong>All</strong>, <strong>Conventional</strong>, or <strong>Islamic</strong>.</p>
+        <p><strong>See what it costs</strong> opens the calculator for that product, carrying the offer and a starting amount.</p>
+        <p>If a shelf is empty, use <strong>Simulate</strong> to browse a product directly. <strong>Ideas after good repayment</strong> opens the top-up screen.</p>
+        <table>
+          <thead><tr><th>Person</th><th>What the shelf is built around</th></tr></thead>
+          <tbody>
+            <tr><td>Ayesha Khan, Karachi, salaried</td><td>Personal Finance and Auto Ijarah, after 14 months of salary credits. She already has a booked facility.</td></tr>
+            <tr><td>Sana Iqbal, Karachi, thin file</td><td>A small Micro Limit that can grow with on-time repayment.</td></tr>
+            <tr><td>Hamza Qureshi, Karachi, SME</td><td>Working-capital cases of this size go to committee. His shelf may be empty; staff already have his case.</td></tr>
+            <tr><td>Imran Farooqi, Riyadh, expat</td><td>Saudi parameter pack (Saudi riyal, Tawarruq).</td></tr>
+          </tbody>
+        </table>
+
+        <h3 id="a2">A2. Simulate — see the cost before you apply</h3>
+        <p>The calculator shows the product name, whether it is conventional or Islamic, and a short description.</p>
+        <p>Move <strong>Amount</strong> and <strong>Tenor</strong>. The quote updates as you move the sliders. Amount and tenor stay inside that product’s minimum and maximum.</p>
+        <p>The quote shows:</p>
+        <ul>
+          <li>Estimated monthly instalment</li>
+          <li>Rate label and rate</li>
+          <li>Whether the instalment sits inside your comfort zone, or is tight</li>
+          <li>A headroom meter</li>
+          <li>Total payable, fees, and total cost</li>
+          <li>Debt-burden ratio (DBR) for salaried products, or cash-flow cover for business products</li>
+          <li>A disclaimer that the figures are illustrative until a live bank publishes its own disclosure</li>
+        </ul>
+        <p><strong>Compare</strong> lists a sibling product and its instalment. Open it to try that product at a similar amount.</p>
+        <p><strong>Continue with this</strong> keeps the amount, tenor, and offer and opens the application.</p>
+        <h4>Products you can be offered</h4>
+        <table>
+          <thead><tr><th>Code</th><th>Name</th><th>Family</th><th>Currency</th><th>Amount</th><th>Tenor</th><th>What it is</th></tr></thead>
+          <tbody>
+            <tr><td><code>PF_CONV</code></td><td>Personal Finance</td><td>Conventional</td><td>PKR</td><td>50,000 – 1,500,000</td><td>6–60 months</td><td>Reducing-balance personal loan for salaried customers. Can disburse straight through after signing.</td></tr>
+            <tr><td><code>PF_MURABAHA</code></td><td>Personal Murabaha</td><td>Islamic</td><td>PKR</td><td>50,000 – 1,500,000</td><td>6–60 months</td><td>The bank buys the asset, takes ownership, then sells it to you at a disclosed profit.</td></tr>
+            <tr><td><code>AUTO_IJARAH</code></td><td>Auto Ijarah</td><td>Islamic</td><td>PKR</td><td>300,000 – 3,000,000</td><td>12–60 months</td><td>Vehicle lease. Ownership, possession, and takaful are evidenced before the lease starts.</td></tr>
+            <tr><td><code>SME_WC</code></td><td>SME Working Capital</td><td>Conventional</td><td>PKR</td><td>500,000 – 15,000,000</td><td>6–36 months</td><td>Cash-flow lending for a trading business. Room for a guarantee scheme.</td></tr>
+            <tr><td><code>HOME_DM</code></td><td>Home Finance</td><td>Islamic</td><td>PKR</td><td>1,000,000 – 25,000,000</td><td>60–240 months</td><td>Diminishing Musharakah: you and the bank co-own, then you buy the bank’s units over time.</td></tr>
+            <tr><td><code>MICRO_WALLET</code></td><td>Micro Limit</td><td>Conventional</td><td>PKR</td><td>5,000 – 100,000</td><td>1–12 months</td><td>A small limit that can use wallet and bill-payment history you consent to share.</td></tr>
+            <tr><td><code>PF_TAWARRUQ</code></td><td>Tawarruq Personal</td><td>Islamic</td><td>SAR</td><td>5,000 – 150,000</td><td>6–60 months</td><td>Commodity purchase and sale under the GCC pack.</td></tr>
+          </tbody>
+        </table>
+        <p>Indicative base rates in the demo run from 12% to 22% a year depending on the product. The decision engine can price inside each product’s floor and cap using your score grade. A relationship of three years or more can apply a small discount. Treat every rate on screen as illustrative.</p>
+        <p>Islamic products mark late-payment amounts as charity, not bank income.</p>
+
+        <h3 id="a3">A3. Application — check what the bank already knows</h3>
+        <p>Horizon fills the form from your profile:</p>
+        <ul>
+          <li>Name, city, employer</li>
+          <li>Income (salary, or business cash flow where that is how you are assessed)</li>
+          <li>CNIC</li>
+          <li>The amount and tenor you chose</li>
+        </ul>
+        <p>Read the card. <strong>This looks right</strong> creates the application and moves you to verification. You can leave and return; the application stays with this session until you submit it.</p>
+        <p>Nothing else needs to be typed on this screen.</p>
+
+        <h3 id="a4">A4. Verification — consent, then the checks</h3>
+        <p>Before the decision, you choose what the bank may use. These are on by default:</p>
+        <table>
+          <thead><tr><th>Consent</th><th>What the bank uses it for</th></tr></thead>
+          <tbody>
+            <tr><td>Face match and CNIC</td><td>Confirm you are you</td></tr>
+            <tr><td>Credit bureau</td><td>Read repayment history</td></tr>
+            <tr><td>Salary credits</td><td>Confirm income from the account, not a scanned slip</td></tr>
+          </tbody>
+        </table>
+        <p>Optional:</p>
+        <table>
+          <thead><tr><th>Consent</th><th>What the bank uses it for</th></tr></thead>
+          <tbody>
+            <tr><td>Wallet and bills</td><td>Only if you want a thin-file limit to use alternative data</td></tr>
+          </tbody>
+        </table>
+        <p>You can withdraw any purpose later in <strong>Profile</strong>. Withdrawal stops new use of that purpose.</p>
+        <p><strong>Submit application</strong> records the consents, runs verification, and opens the decision screen.</p>
+
+        <h3 id="a5">A5. Decision — the reason either way</h3>
+        <p><strong>Show me the decision</strong> runs the scorecard, the affordability cap, and the policy rules together.</p>
+        <table>
+          <thead><tr><th>Outcome</th><th>What it means for you</th></tr></thead>
+          <tbody>
+            <tr><td><span class="pill">Approve</span></td><td>You can continue to the key facts.</td></tr>
+            <tr><td><span class="pill bad">Decline</span></td><td>The bank will not proceed on this request. The reason is on the screen.</td></tr>
+            <tr><td><span class="pill warn">Refer</span></td><td>A person will review the file. You do not sign yet.</td></tr>
+            <tr><td><span class="pill warn">Committee</span></td><td>The amount sits above the committee threshold. You do not sign yet.</td></tr>
+          </tbody>
+        </table>
+        <p>The screen shows the amount, the monthly instalment and rate when a price was produced, and the reasons in your language. An offer is valid for the number of days shown (7 days on the Pakistan consumer pack in the demo, 5 days on the Saudi pack).</p>
+        <p><strong>Read key facts</strong> appears only after an approval.</p>
+        <p>Reasons you may see, in plain language:</p>
+        <ul>
+          <li>Repayments fit inside the affordability cap, income has been steady, or credit history supports the offer</li>
+          <li>The instalment would take repayments above the affordability cap</li>
+          <li>Business cash flow does not cover the instalment safely</li>
+          <li>The score needs a person, or sits below the decline cut-off</li>
+          <li>The amount is above straight-through or committee limits</li>
+          <li>A politically exposed person match needs review</li>
+          <li>Salary credits have stopped, so new credit is paused</li>
+          <li>Alternative data is not strong enough for the small-ticket product</li>
+          <li>Age, employment, amount, tenor, identity, residency, delinquency, a write-off, sanctions, or a cooling-off window blocks the request</li>
+        </ul>
+
+        <h3 id="a6">A6. Key facts</h3>
+        <p>The disclosure lists amount, tenor, instalment, rate, fee, and total cost, plus the late-payment wording and a disclaimer.</p>
+        <p><strong>I have read this</strong> accepts the statement and opens signing. Only an approved application can be accepted.</p>
+
+        <h3 id="a7">A7. Sign with a code</h3>
+        <p>Horizon sends a six-digit code. In production that code goes by SMS. In the demo the code is shown on the screen so you can finish.</p>
+        <p>Type the six digits and choose <strong>Sign and finish</strong>.</p>
+        <ul>
+          <li>A straight-through personal finance approval, with every digital step already captured, disburses in the same sitting.</li>
+          <li>Islamic products, and any case that still needs evidence, move to operations. The screen says the file is with operations until ownership and the other required steps are on the file.</li>
+        </ul>
+
+        <h3 id="a8">A8. Funds</h3>
+        <p>If the status is disbursed, the screen shows the amount credited, the masked account, and the rail (Raast in the demo). Auto-debit is on the 5th. <strong>View schedule</strong> opens the instalments.</p>
+        <p>If the file is still with operations, funds are not sent yet. Islamic and high-value cases wait until every ownership step has evidence.</p>
+
+        <h3 id="a9">A9. Loans and the repayment schedule</h3>
+        <p><strong>Loans</strong> lists each booked facility: product, principal, how many instalments are paid, the monthly amount, and the debit day.</p>
+        <p><strong>Open schedule</strong> shows the rate, tenor, and the first eight rows, each marked paid or due. Conventional facilities label the charge as an interest component. Islamic facilities label it as profit or rental.</p>
+        <p>Ayesha Khan already has a Personal Finance facility with six instalments paid, so this screen is populated as soon as you enter as her.</p>
+
+        <h3 id="a10">A10. A careful next step — top-up</h3>
+        <p>After good repayment, <strong>Ideas after good repayment</strong> lets you ask for a top-up of Rs 50,000 on a booked facility.</p>
+        <p>The request is scored again. It is granted only when the new instalment still fits. If the affordability cap is tight, or salary credits have stopped, the answer is no. If the engine approves, the screen shows <strong>offered</strong> and a new instalment. The booked loan itself changes only if that offer is later accepted through servicing.</p>
+        <p>New credit stays paused when salary credits have stopped.</p>
+
+        <h3 id="a11">A11. Profile — consent and sign-out</h3>
+        <p>Profile shows your name, city, and CNIC.</p>
+        <p>You can withdraw consent for:</p>
+        <ul>
+          <li>Identity</li>
+          <li>Bureau</li>
+          <li>Salary</li>
+          <li>Marketing</li>
+          <li>Alternative data</li>
+          <li>Open banking</li>
+        </ul>
+        <p>Withdrawal is recorded immediately. It stops new use of that purpose. It does not rewrite a decision that was already made.</p>
+        <p><strong>Sign out</strong> returns you to the welcome screen.</p>
+      </section>
+
+      <section class="part" id="part-b" data-audience="office">
+        <h2>Part B — Back-office guide</h2>
+        <p>The desk is branded <strong>TPS LOS Horizon</strong>. The left menu is grouped into Desk, Relationship, Engine, and Assurance. Your role decides which items appear.</p>
+
+        <h3 id="b1">B1. Who can sign in</h3>
+        <p>Shared demo password: <code>Los@Demo2026</code>.</p>
+        <table>
+          <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Delegation (PKR)</th><th>Branch</th></tr></thead>
+          <tbody>
+            <tr><td>Zara Qureshi</td><td><code>zara.qureshi@noorhorizon.demo</code></td><td>Relationship manager</td><td>500,000</td><td>khi-clifton</td></tr>
+            <tr><td>Omar Siddiqui</td><td><code>omar.siddiqui@noorhorizon.demo</code></td><td>Underwriter</td><td>2,000,000</td><td>khi-clifton</td></tr>
+            <tr><td>Sadia Rahman</td><td><code>sadia.rahman@noorhorizon.demo</code></td><td>Credit officer</td><td>5,000,000</td><td>khi-clifton</td></tr>
+            <tr><td>Hina Baig</td><td><code>hina.baig@noorhorizon.demo</code></td><td>Credit committee</td><td>—</td><td>khi-clifton</td></tr>
+            <tr><td>Kamran Ali</td><td><code>kamran.ali@noorhorizon.demo</code></td><td>Credit committee</td><td>—</td><td>khi-clifton</td></tr>
+            <tr><td>Farah Naveed</td><td><code>farah.naveed@noorhorizon.demo</code></td><td>Operations</td><td>—</td><td>khi-clifton</td></tr>
+            <tr><td>Idrees Qadri</td><td><code>idrees.qadri@noorhorizon.demo</code></td><td>Shariah advisor</td><td>—</td><td>khi-clifton</td></tr>
+            <tr><td>Meher Khan</td><td><code>meher.khan@noorhorizon.demo</code></td><td>Marketing</td><td>—</td><td>khi-clifton</td></tr>
+            <tr><td>Tariq Jameel</td><td><code>tariq.jameel@noorhorizon.demo</code></td><td>Credit policy</td><td>—</td><td>khi-clifton</td></tr>
+            <tr><td>Hira Latif</td><td><code>hira.latif@noorhorizon.demo</code></td><td>Model risk</td><td>—</td><td>khi-clifton</td></tr>
+            <tr><td>Rabia Noor</td><td><code>rabia.noor@noorhorizon.demo</code></td><td>Compliance</td><td>—</td><td>khi-clifton</td></tr>
+            <tr><td>Imtiaz Shah</td><td><code>imtiaz.shah@noorhorizon.demo</code></td><td>Auditor</td><td>—</td><td>khi-clifton</td></tr>
+            <tr><td>Noman Dealer</td><td><code>noman.dealer@noorhorizon.demo</code></td><td>Dealer (Clifton Motors)</td><td>3,000,000</td><td>khi-clifton</td></tr>
+            <tr><td>TPS Admin</td><td><code>admin@noorhorizon.demo</code></td><td>System admin</td><td>—</td><td>khi-clifton</td></tr>
+          </tbody>
+        </table>
+        <p>A branch-officer role exists in the menu rules (command center, queue, RM book, and early warning). The demo directory does not include a branch-officer login.</p>
+        <p>Delegation is the largest amount that person may approve by override. An amount above that limit is refused, even if the Approve button is visible.</p>
+
+        <h3 id="b2">B2. What each role is for</h3>
+        <table>
+          <thead><tr><th>Role</th><th>Day-to-day work</th></tr></thead>
+          <tbody>
+            <tr><td>Relationship manager</td><td>Customer book, customer 360, early warning, schemes (read).</td></tr>
+            <tr><td>Underwriter</td><td>Queue and workbench. Approve or decline referred cases inside the delegation, with a written reason.</td></tr>
+            <tr><td>Credit officer</td><td>Queue, workbench, and committee list. Second approval on four-eyes cases. Higher delegation than the underwriter.</td></tr>
+            <tr><td>Credit committee</td><td>Cases above the committee threshold. Two approve votes book an approval. Two decline votes book a decline.</td></tr>
+            <tr><td>Operations</td><td>Fulfilment. Record remaining evidence and disburse. Also sees Shariah sequencing.</td></tr>
+            <tr><td>Shariah advisor</td><td>Shariah control, fulfilment, products, regulatory packs, and configuration. Can approve Islamic and reason-catalogue configuration.</td></tr>
+            <tr><td>Marketing</td><td>Campaigns and MIS.</td></tr>
+            <tr><td>Credit policy</td><td>Products, rules, scorecards, regulatory packs, configuration, schemes, models, campaigns. Maker on policy changes.</td></tr>
+            <tr><td>Model risk</td><td>Scorecards, rules (read), configuration, model cards, MIS.</td></tr>
+            <tr><td>Compliance</td><td>Audit trail, user access, rules approval, regulatory packs, configuration, warnings, analytics. Checker on policy.</td></tr>
+            <tr><td>Auditor</td><td>Read-only assurance: queue, products, rules, scorecards, packs, configuration, models, MIS, and the audit trail.</td></tr>
+            <tr><td>Dealer</td><td>Originate an Auto Ijarah walk-in at the counter.</td></tr>
+            <tr><td>System admin</td><td>Every menu. Use it to demonstrate the whole bank, not as a credit approver. Delegation on the seeded admin is zero, so overrides above zero are refused.</td></tr>
+          </tbody>
+        </table>
+        <p>Checker roles for configuration and rules are credit policy, compliance, system admin, and — for keys that start with <code>islamic.</code> or <code>reason.</code> — the Shariah advisor. The person who submits a rule cannot be the person who approves it.</p>
+
+        <h3 id="b3">B3. Menu map</h3>
+        <h4>Desk</h4>
+        <table>
+          <thead><tr><th>Screen</th><th>Roles</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td>Command center</td><td>All staff except dealer</td><td>Book health at a glance</td></tr>
+            <tr><td>Application queue</td><td>Credit, RM, branch, operations, compliance, auditor, committee, admin</td><td>Every application, filterable</td></tr>
+            <tr><td>Credit committee</td><td>Committee, credit officer, admin</td><td>Cases waiting on a vote</td></tr>
+            <tr><td>Fulfilment</td><td>Operations, Shariah advisor, admin</td><td>Evidence and disbursement</td></tr>
+            <tr><td>Shariah control</td><td>Shariah advisor, operations, compliance, admin</td><td>Islamic sequencing</td></tr>
+            <tr><td>Dealer counter</td><td>Dealer, admin</td><td>Walk-in auto finance</td></tr>
+          </tbody>
+        </table>
+        <h4>Relationship</h4>
+        <table>
+          <thead><tr><th>Screen</th><th>Roles</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td>RM workbench</td><td>RM, branch officer, admin</td><td>Customer book</td></tr>
+            <tr><td>Early warning</td><td>RM, credit officer, operations, compliance, admin</td><td>Portfolio signals</td></tr>
+            <tr><td>Campaigns</td><td>Marketing, credit policy, admin</td><td>Offer runs with consent and holdout</td></tr>
+          </tbody>
+        </table>
+        <h4>Engine</h4>
+        <table>
+          <thead><tr><th>Screen</th><th>Roles</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td>Products</td><td>Credit policy, Shariah, compliance, auditor, admin</td><td>Catalogue</td></tr>
+            <tr><td>Rules studio</td><td>Credit policy, compliance, underwriter, model risk, auditor, admin</td><td>No-code policy</td></tr>
+            <tr><td>Scorecards</td><td>Credit policy, model risk, compliance, auditor, admin</td><td>Cut-offs and weights</td></tr>
+            <tr><td>Regulatory packs</td><td>Credit policy, compliance, Shariah, auditor, admin</td><td>DBR and age packs</td></tr>
+            <tr><td>Configuration engine</td><td>Credit policy, compliance, Shariah, model risk, auditor, admin</td><td>See which layer wins</td></tr>
+            <tr><td>Schemes</td><td>Credit policy, compliance, RM, admin</td><td>Guarantee templates</td></tr>
+            <tr><td>Model governance</td><td>Model risk, credit policy, compliance, auditor, admin</td><td>Model cards</td></tr>
+          </tbody>
+        </table>
+        <h4>Assurance</h4>
+        <table>
+          <thead><tr><th>Screen</th><th>Roles</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td>MIS analytics</td><td>Admin, credit officer, marketing, auditor, credit policy, model risk, compliance</td><td>Funnel and reason counts</td></tr>
+            <tr><td>Audit trail</td><td>Auditor, compliance, admin</td><td>Who did what</td></tr>
+            <tr><td>User access</td><td>System admin, compliance</td><td>Roles and delegation</td></tr>
+          </tbody>
+        </table>
+
+        <h3 id="b4">B4. Command center</h3>
+        <p>The command center is the opening screen for staff who are not dealers. It shows:</p>
+        <ul>
+          <li>Application count</li>
+          <li>Approval rate</li>
+          <li>Straight-through share of approved cases</li>
+          <li>Open early warnings</li>
+          <li>Pipeline amount</li>
+          <li>Offers viewed out of offers issued</li>
+          <li>Booked loans</li>
+          <li>Average decision turnaround in hours</li>
+          <li>A count of applications by status</li>
+        </ul>
+        <p>Use it to see whether the book is moving. Open the queue to work a single case.</p>
+
+        <h3 id="b5">B5. Application queue</h3>
+        <p>The queue lists reference, customer, product, amount, status, score, and SLA. Filter by status:</p>
+        <ul>
+          <li><code>referred</code></li>
+          <li><code>pending_second_approval</code></li>
+          <li><code>committee</code></li>
+          <li><code>pending_fulfilment</code></li>
+          <li><code>approved</code></li>
+          <li><code>declined</code></li>
+          <li><code>disbursed</code></li>
+        </ul>
+        <p>SLA is <strong>Inside</strong> while the due time has not passed, and <strong>Breached</strong> when a referred or committee case is past its due time. The demo SLA is 4 hours from submission. Cases with no SLA clock show a dash.</p>
+        <p>Click a row to open the underwriter workbench.</p>
+        <h4>Status meanings</h4>
+        <table>
+          <thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td><code>verified</code></td><td>Checks are done. The customer can ask for a decision.</td></tr>
+            <tr><td><code>approved</code></td><td>Engine or a person approved. Customer may read key facts and sign.</td></tr>
+            <tr><td><code>declined</code></td><td>Engine or a person declined.</td></tr>
+            <tr><td><code>referred</code></td><td>Score, policy, PEP, or amount needs a person inside delegation.</td></tr>
+            <tr><td><code>pending_second_approval</code></td><td>First approver said yes, and the amount is above the four-eyes line (Rs 1,000,000). A different person must confirm.</td></tr>
+            <tr><td><code>committee</code></td><td>Amount is above the committee line (Rs 5,000,000). Two matching votes close it.</td></tr>
+            <tr><td><code>accepted</code></td><td>Customer accepted the key facts.</td></tr>
+            <tr><td><code>pending_fulfilment</code></td><td>Signed, or approved and Islamic, but evidence is still open. Operations must finish the sequence before money moves.</td></tr>
+            <tr><td><code>disbursed</code></td><td>A loan account exists.</td></tr>
+          </tbody>
+        </table>
+        <h4>Cases already on the book</h4>
+        <table>
+          <thead><tr><th>Customer</th><th>What staff will find</th></tr></thead>
+          <tbody>
+            <tr><td>Ayesha Khan</td><td>Personal Finance of Rs 250,000, disbursed, six instalments paid.</td></tr>
+            <tr><td>Farooq Ahmed</td><td>Personal Finance of Rs 1,200,000. Score sits in the review band, so the case is referred.</td></tr>
+            <tr><td>Nida Pervez</td><td>Personal Finance of Rs 600,000. The instalment crosses the affordability cap, so the case is declined.</td></tr>
+            <tr><td>Hamza Qureshi</td><td>SME working capital of Rs 6,000,000. Above the committee line, with the SME guarantee scheme attached. Sadia Rahman has already voted to approve. One more approve vote closes it.</td></tr>
+            <tr><td>Adeel Mir</td><td>Personal Finance of Rs 500,000. PEP flag routes it to review.</td></tr>
+            <tr><td>Usman Raza</td><td>Auto Ijarah of Rs 900,000 on a 2024 Toyota Yaris from Clifton Motors. If approved, the file waits in fulfilment for Shariah evidence.</td></tr>
+          </tbody>
+        </table>
+
+        <h3 id="b6">B6. Underwriter workbench</h3>
+        <p>Open a case from the queue. The header is the application reference and the customer name.</p>
+        <p>The left side shows product, amount, tenor, city, employer, bureau score, status, and channel, then:</p>
+        <ul>
+          <li>Why the engine said this (the same reasons the customer can see)</li>
+          <li>Affordability (DBR or cash-flow cover)</li>
+          <li>A justification box, when you are allowed to act</li>
+        </ul>
+        <p>The right side shows the score waterfall: each factor, its contribution, the refer and approve cut-offs, probability of default, expected credit loss, the price (rate, grade, instalment), and notes already on the file.</p>
+        <h4>Who can decide here</h4>
+        <p>Underwriters, credit officers, and the system admin see <strong>Approve</strong> and <strong>Decline</strong> when the status is <code>referred</code> or <code>pending_second_approval</code>.</p>
+        <ol>
+          <li>Read the reasons and the score.</li>
+          <li>Write a justification of at least 20 characters. The box starts with a sample sentence; replace it with the reason for this case.</li>
+          <li>Confirm the amount is inside your delegation.</li>
+        </ol>
+        <p><strong>Approve</strong> records a manual decision.</p>
+        <ul>
+          <li>At or under Rs 1,000,000, the case becomes approved.</li>
+          <li>Above Rs 1,000,000, the case becomes <code>pending_second_approval</code>. You cannot second-approve your own decision. A different credit user opens the same case and chooses <strong>Second approval</strong>.</li>
+        </ul>
+        <p><strong>Decline</strong> records a manual decline at once. Four-eyes applies to approvals above the line, and a decline is final on its own.</p>
+        <p>If the amount is above your delegation, Horizon refuses the action. Farooq’s Rs 1,200,000 case fits Omar (limit Rs 2,000,000) and will then need Sadia, or another different approver, for the second eye. A Rs 6,000,000 SME case is committee work, and the underwriter override path does not close it.</p>
+
+        <h3 id="b7">B7. Credit committee</h3>
+        <p><strong>Credit committee</strong> lists every case in status <code>committee</code>: customer, reference, product, votes so far, and amount.</p>
+        <p><strong>Open pack</strong> shows the amount, product, scheme, status, score, and reasons, then the votes already cast.</p>
+        <p>Write your minute and choose <strong>Approve</strong> or <strong>Decline</strong>.</p>
+        <ul>
+          <li>You can vote once.</li>
+          <li>The case must still be in committee.</li>
+          <li>Two approve votes set the status to approved.</li>
+          <li>Two decline votes set the status to declined.</li>
+          <li>One vote on each side leaves the case open.</li>
+        </ul>
+        <p>Hamza’s pack already contains Sadia Rahman’s approve vote and the SME guarantee scheme. Hina Baig or Kamran Ali can cast the second vote. Sign in as the other committee member if you already voted as Sadia; a credit officer who has voted cannot vote again under the same name.</p>
+
+        <h3 id="b8">B8. Fulfilment</h3>
+        <p>Fulfilment lists applications in <code>pending_fulfilment</code>. Each card shows the customer, product, amount, asset (or “Unsecured”), and every step in the contract sequence with its status.</p>
+        <p><strong>Record remaining evidence and disburse</strong> writes evidence for each required step that is still open, then disburses. Disbursement is refused while any required step is open.</p>
+        <p>Use this after a customer has signed a straight-through product that still had a condition, and for every Islamic contract. Operations and the Shariah advisor can open this screen. The system admin can as well.</p>
+
+        <h3 id="b9">B9. Shariah control</h3>
+        <p>This screen lists applications whose contract is Murabaha, Ijarah, Diminishing Musharakah, or Tawarruq.</p>
+        <p>Each card shows the customer, contract type, application status, and the sequence. A complete step is marked good. A pending step stays in warning.</p>
+        <p>Disbursement stays closed until the required steps are complete. Late-payment amounts on these products are charity, not income.</p>
+        <h4>Sequences the engine expects</h4>
+        <p><strong>Conventional:</strong> identity, key facts, contract signed, disbursement account confirmed.</p>
+        <p><strong>Murabaha:</strong> identity, asset quotation, bank purchase, ownership, possession, Murabaha sale, key facts, signature.</p>
+        <p><strong>Ijarah:</strong> identity, asset identified, valuation, bank purchase, ownership, possession, Ijarah contract, takaful, key facts, signature.</p>
+        <p><strong>Diminishing Musharakah:</strong> identity, property valuation, partnership agreement, co-ownership, lease of the bank’s share, unit purchase schedule, key facts, signature.</p>
+        <p><strong>Tawarruq:</strong> identity, commodity purchased by the bank, ownership, sale to the customer, customer’s sale of the commodity, key facts, signature.</p>
+        <p>Digital steps (identity, key facts, signature, and account confirmation where they apply) are completed when the customer signs in the app. Purchase, ownership, possession, valuation, takaful, and the commodity steps are completed by operations on Fulfilment, and reviewed here.</p>
+
+        <h3 id="b10">B10. Dealer counter</h3>
+        <p>Sign in as Noman Dealer. The counter is Clifton Motors, Karachi.</p>
+        <ol>
+          <li>Choose the walk-in. Hiba Merchant is the seeded customer for this counter.</li>
+          <li>Enter the finance amount. The screen starts at Rs 1,800,000.</li>
+          <li>The customer is treated as having agreed, at the counter, to identity, bureau, and salary checks.</li>
+          <li><strong>Ask for a decision</strong> originates an Auto Ijarah for 36 months on a 2025 Honda City valued at Rs 6,500,000.</li>
+        </ol>
+        <p>The result shows the outcome, amount, score, and reasons.</p>
+        <p>A dealer ticket above Rs 2,000,000 is referred even when the score would otherwise pass. That rule is active in the rules studio (<code>DEALER_HIGH_TICKET</code>).</p>
+
+        <h3 id="b11">B11. Relationship manager workbench and Customer 360</h3>
+        <p><strong>RM workbench</strong> is the customer book: name, segment, city, income (or cash flow), and bureau score. Open a name for Customer 360.</p>
+        <p>Customer 360 shows customer number, segment, bureau, income, CNIC, and the consent ledger. Each consent is active or withdrawn, with the channel it was given on. If the customer has not consented yet, the ledger says so.</p>
+        <p>Segments in the demo: salaried, expat, sme, thin_file.</p>
+
+        <h3 id="b12">B12. Early warning</h3>
+        <p>Signals sit on the portfolio, separate from a single application.</p>
+        <p>Bilal Hassan is seeded with an open high-severity signal: salary credits have stopped. The recommended action is a soft contact and a restructure conversation, and no new limit.</p>
+        <p><strong>Acknowledge</strong> records your name and clears the open state. Acknowledged signals stay on the screen so the next reader can see who took them.</p>
+
+        <h3 id="b13">B13. Campaigns</h3>
+        <p>The seeded campaign is <strong>Salary-day personal finance</strong>: salaried segment, app channel, Personal Finance, at most 2 contacts in 7 days, 10% holdout.</p>
+        <p><strong>Run with consent and holdout</strong> issues offers only where consent and the frequency cap allow, holds out the configured share (Nadia Control is the seeded holdout customer), and skips the rest.</p>
+        <p>The result line reports how many were issued, held out, and skipped.</p>
+        <p>Quiet hours in configuration are 22:00 to 08:00, with a wider cap of 4 contacts in 30 days. The campaign screen itself shows the campaign’s own cap and holdout.</p>
+
+        <h3 id="b14">B14. Products</h3>
+        <p>The catalogue lists every product: family, jurisdiction, name, amount band, base rate, and contract type. This screen is a reading of the live catalogue. Limits and rates used in the calculator come from here.</p>
+
+        <h3 id="b15">B15. Rules studio</h3>
+        <p>Rules are no-code policy. Each row shows the name, stage, the condition, the outcome and reason code, and the status.</p>
+        <table>
+          <thead><tr><th>Rule</th><th>When</th><th>Then</th></tr></thead>
+          <tbody>
+            <tr><td>Thin-file alternative data floor</td><td>Micro Limit, thin-file, Pakistan, alternative-data quality below 50</td><td>Decline, reason <code>ALT_DATA_WEAK</code></td></tr>
+            <tr><td>Dealer tickets above 2 million are reviewed</td><td>Channel is dealer and amount is above 2,000,000</td><td>Refer, reason <code>DOA_ABOVE_STP</code></td></tr>
+          </tbody>
+        </table>
+        <h4>Add a rule</h4>
+        <ol>
+          <li>Sign in as someone who can draft, for example Tariq Jameel (credit policy).</li>
+          <li>Name the rule. The screen starts with “Cooling off after a decline”.</li>
+          <li><strong>Save draft</strong> creates a rule that declines when duplicate applications are 3 or more, reason <code>COOLING_OFF</code>, and submits it for approval.</li>
+          <li>Sign in as a different checker (compliance, or another checker role). The maker cannot approve their own rule.</li>
+          <li><strong>Approve</strong> makes the rule active. The next decision will use it.</li>
+        </ol>
+
+        <h3 id="b16">B16. Scorecards</h3>
+        <p>Each card shows name, status, version, approve cut-off, refer cut-off, products, and factor weights.</p>
+        <table>
+          <thead><tr><th>Scorecard</th><th>Products</th><th>Approve / refer</th><th>What it weighs</th></tr></thead>
+          <tbody>
+            <tr><td>Salaried application</td><td>Personal Finance, Murabaha, Auto Ijarah</td><td>72 / 55</td><td>Bureau 30, affordability 25, salary continuity 20, relationship 15, balance stability 10</td></tr>
+            <tr><td>SME cash-flow</td><td>SME Working Capital</td><td>70 / 55</td><td>Cash-flow stability 30, cover 30, bureau 25, relationship 15</td></tr>
+            <tr><td>Thin-file alternative data</td><td>Micro Limit</td><td>70 / 55</td><td>Alternative data 40, affordability 30, wallet stability 20, relationship 10</td></tr>
+            <tr><td>Home finance</td><td>Home Finance</td><td>74 / 58</td><td>Bureau 25, affordability 30, income continuity 20, relationship 15, stability 10</td></tr>
+            <tr><td>GCC salaried</td><td>Tawarruq</td><td>72 / 55</td><td>Bureau 30, debt-burden headroom 30, salary continuity 25, relationship 15</td></tr>
+          </tbody>
+        </table>
+        <p>A score at or above the approve cut-off can be approved by the engine, still subject to affordability, rules, and delegation. Between the refer and approve cut-offs, a person reviews. Below the refer cut-off, the engine declines.</p>
+        <p><strong>Simulate Ayesha’s features</strong> runs that card against a fixed feature set (bureau 742, and the other values shown in the studio) and prints the score and band. It does not change a live application.</p>
+        <p>Model cards for the salaried champion and a shadow challenger live under Model governance. The challenger does not make decisions.</p>
+
+        <h3 id="b17">B17. Regulatory packs</h3>
+        <p>These are versioned parameter packs. A live bank replaces the numbers from the current circular without a code release.</p>
+        <p>The screen shows active <code>regulatory.dbr</code> layers, general to specific:</p>
+        <table>
+          <thead><tr><th>Layer</th><th>What the demo sets</th></tr></thead>
+          <tbody>
+            <tr><td>System</td><td>Max DBR 50%, age 18–70, offer validity 14 days, minimum cash-flow cover 1.3</td></tr>
+            <tr><td>Pakistan</td><td>Max DBR 40%, age 21–65, offer validity 7 days, authority SBP</td></tr>
+            <tr><td>Saudi Arabia</td><td>Max DBR 33%, age 21–60, offer validity 5 days, authority SAMA, non-residents allowed</td></tr>
+            <tr><td>UAE</td><td>Max DBR 50%, age 21–65, offer validity 5 days, authority CBUAE</td></tr>
+            <tr><td>Noor Horizon overlay</td><td>Pack name only; numbers inherit</td></tr>
+            <tr><td>Home Finance product</td><td>Max DBR 50% for that product</td></tr>
+            <tr><td>SME Working Capital product</td><td>Minimum cash-flow cover 1.5</td></tr>
+          </tbody>
+        </table>
+        <p>A more specific layer overrides only the fields it sets. Other fields inherit.</p>
+
+        <h3 id="b18">B18. Configuration engine</h3>
+        <p>Use this when you need to see which number a decision will actually use.</p>
+        <p>The form starts at key <code>regulatory.dbr</code>, jurisdiction PK, segment salaried, product PF_CONV, channel app.</p>
+        <p><strong>Resolve</strong> shows:</p>
+        <ul>
+          <li>The value after inheritance</li>
+          <li>The chain of layers from general to specific, with version and the fields each layer contributed</li>
+        </ul>
+        <p>The same inheritance applies to pricing bands, the delegation matrix, fraud thresholds, the reason catalogue, and Islamic sequences. Change the key to inspect another family. Keys the decision service loads are:</p>
+        <ul>
+          <li><code>regulatory.dbr</code></li>
+          <li><code>pricing.bands</code></li>
+          <li><code>doa.matrix</code></li>
+          <li><code>fraud.thresholds</code></li>
+          <li><code>reason.catalogue</code></li>
+          <li><code>islamic.sequences</code></li>
+        </ul>
+        <h4>Delegation matrix in the demo</h4>
+        <table>
+          <thead><tr><th>Parameter</th><th>Value</th></tr></thead>
+          <tbody>
+            <tr><td>Straight-through limit</td><td>Rs 1,500,000</td></tr>
+            <tr><td>Four-eyes above</td><td>Rs 1,000,000</td></tr>
+            <tr><td>Officer limit</td><td>Rs 5,000,000</td></tr>
+            <tr><td>Committee above</td><td>Rs 5,000,000</td></tr>
+            <tr><td>SLA</td><td>4 hours</td></tr>
+            <tr><td>Group exposure cap</td><td>Rs 25,000,000</td></tr>
+          </tbody>
+        </table>
+        <p>Straight-through also requires the product to be marked STP-eligible. In the catalogue that is Personal Finance and Micro Limit. Islamic products wait for their sequence.</p>
+        <h4>Pricing bands</h4>
+        <p>Grades in the demo: A from score 80 (no premium), B from 72 (+0.50 point), C from 55 (+1.50 points), D below that (+3.00 points). Floor 8%, cap 28%. Three or more relationship years: 0.50 point discount. The product’s own minimum and maximum rate still apply.</p>
+        <h4>Fraud thresholds</h4>
+        <p>Two similar recent applications refer. Four decline. A device risk score of 70 or more refers. A PEP match refers.</p>
+
+        <h3 id="b19">B19. Schemes</h3>
+        <table>
+          <thead><tr><th>Scheme</th><th>Cover</th><th>Cap</th><th>Who it is for</th></tr></thead>
+          <tbody>
+            <tr><td>SME guarantee scheme</td><td>60%</td><td>Rs 10,000,000</td><td>Trading SMEs with 12 months of banked cash flow. Attached to Hamza’s committee case.</td></tr>
+            <tr><td>Housing support scheme</td><td>Support template, 0% guarantee cover</td><td>Rs 15,000,000</td><td>First home, inside the configured price cap.</td></tr>
+          </tbody>
+        </table>
+        <p>Both are marked illustrative. The authority line on the screen says so. Confirm the percentages against the live circular before using them outside the demo.</p>
+
+        <h3 id="b20">B20. Model governance</h3>
+        <p>Each model card shows purpose, status, limits, Gini, KS, PSI, a fairness note, the validator, and how often it is watched.</p>
+        <table>
+          <thead><tr><th>Model</th><th>Status</th><th>Use</th></tr></thead>
+          <tbody>
+            <tr><td>Salaried scorecard</td><td>Champion</td><td>Ranks probability of default for salaried personal and auto applications. The card limits it to files that are not thin-file and not undocumented SME income.</td></tr>
+            <tr><td>Salaried challenger</td><td>Challenger</td><td>Shadow model with utility-payment regularity. Decisions stay on the champion.</td></tr>
+          </tbody>
+        </table>
+        <p>Monitoring on the champion is quarterly PSI, KS, and override review.</p>
+
+        <h3 id="b21">B21. MIS analytics</h3>
+        <p>The funnel repeats application counts by status as bars, then lists decline and refer reason codes with counts. Use it beside the command center when you need the mix of reasons, not only the approval rate.</p>
+
+        <h3 id="b22">B22. Audit trail</h3>
+        <p>The trail lists when, who (name and role), the action, and the resource. It is written when the platform is seeded and when staff and customers do governed actions: decision, key-facts acceptance, e-sign, override, four-eyes, committee vote, and sequence evidence.</p>
+        <p>Auditors, compliance, and the system admin can open it. The trail is the record of the action.</p>
+
+        <h3 id="b23">B23. User access</h3>
+        <p>Compliance and the system admin can read the directory: name, email, role, delegation, and branch. This is the same delegation the workbench enforces. Changing a person’s limit is an administration task outside this screen in the current build; the screen is the register of who can do what.</p>
+      </section>
+
+      <section class="part" id="part-c" data-audience="both">
+        <h2>Part C — How a case moves</h2>
+        <div class="flow">
+          <div class="step">Customer sees the offer</div>
+          <div class="step">Simulates amount and tenor</div>
+          <div class="step">Confirms the prefilled application</div>
+          <div class="step">Gives consent and verifies</div>
+          <div class="step"><strong>Decision engine</strong></div>
+          <div class="branch">
+            <div><span class="pill">Approve</span><p>Key facts, then e-sign.</p></div>
+            <div><span class="pill warn">Refer</span><p>Workbench. At or under Rs 1,000,000 becomes approved. Above that, a second person confirms.</p></div>
+            <div><span class="pill bad">Decline</span><p>The customer sees the reason.</p></div>
+          </div>
+          <div class="step">Amount above Rs 5,000,000 goes to committee. Two matching votes close it.</div>
+          <div class="step">After e-sign, a straight-through product with a complete sequence disburses. Islamic files and open conditions go to fulfilment, then disburse.</div>
+        </div>
+        <p>Dealer origination skips the phone and starts at the counter, then uses the same engine. A dealer amount above Rs 2,000,000 is referred by rule.</p>
+        <p>Top-up starts from a booked loan, is scored again, and becomes an offer only when the engine approves.</p>
+      </section>
+
+      <section class="part" id="part-d" data-audience="both">
+        <h2>Part D — Worked examples</h2>
+        <h3>A salaried customer who can finish in one sitting</h3>
+        <ol>
+          <li>On the welcome screen, choose <strong>Ayesha Khan</strong>.</li>
+          <li>On Home, open <strong>Personal Finance</strong> and choose <strong>See what it costs</strong>.</li>
+          <li>Set an amount inside Rs 50,000–1,500,000 and a tenor, and continue.</li>
+          <li>Confirm the prefilled details.</li>
+          <li>Leave identity, bureau, and salary consent on. Submit.</li>
+          <li>Show the decision. If it is approved, read the key facts and sign with the demo code.</li>
+          <li>When the screen says funds were sent, open the schedule. Auto-debit is on the 5th.</li>
+        </ol>
+        <p>Her existing Rs 250,000 facility is already under <strong>Loans</strong>, with six payments made. From there you can ask for a Rs 50,000 top-up and see the re-score.</p>
+        <h3>A case a person must finish</h3>
+        <ol>
+          <li>Sign in as <strong>Omar Siddiqui</strong>.</li>
+          <li>Open <strong>Application queue</strong>, filter <strong>referred</strong>, and open Farooq Ahmed.</li>
+          <li>Read the score waterfall and write a justification.</li>
+          <li>Approve. Because Rs 1,200,000 is above the four-eyes line, the status becomes pending second approval.</li>
+          <li>Sign out. Sign in as <strong>Sadia Rahman</strong>.</li>
+          <li>Open the same case and choose <strong>Second approval</strong>. The status becomes approved.</li>
+        </ol>
+        <h3>A committee case</h3>
+        <ol>
+          <li>Sign in as <strong>Hina Baig</strong>.</li>
+          <li>Open <strong>Credit committee</strong>, then Hamza Qureshi’s pack.</li>
+          <li>Read the score, the SME guarantee scheme, and Sadia’s existing approve vote.</li>
+          <li>Approve with a minute. Two approve votes set the case to approved.</li>
+        </ol>
+        <h3>An Islamic file that cannot disburse yet</h3>
+        <ol>
+          <li>Sign in as <strong>Idrees Qadri</strong>.</li>
+          <li>Open <strong>Shariah control</strong> and find Usman Raza’s Ijarah.</li>
+          <li>Confirm which of valuation, purchase, ownership, possession, lease, and takaful are still pending.</li>
+          <li>Sign in as <strong>Farah Naveed</strong>, open <strong>Fulfilment</strong>, and record the remaining evidence. Disbursement runs only after the sequence is complete.</li>
+        </ol>
+        <h3>A policy change with two people</h3>
+        <ol>
+          <li>Sign in as <strong>Tariq Jameel</strong>. Open <strong>Rules studio</strong>, name the rule, and save the draft.</li>
+          <li>Sign in as <strong>Rabia Noor</strong>. Approve the pending rule.</li>
+          <li>The next application is scored with that rule active. <strong>Audit trail</strong> shows both actions.</li>
+        </ol>
+      </section>
+
+      <section class="part" id="part-e" data-audience="both">
+        <h2>Part E — Troubleshooting</h2>
+        <table>
+          <thead><tr><th>What you see</th><th>What to do</th></tr></thead>
+          <tbody>
+            <tr><td>“Opening TPS LOS…” does not finish</td><td>The API on port 4000 is not running, or the browser cannot reach it. Start the backend, then refresh.</td></tr>
+            <tr><td>Staff sign-in says the request failed</td><td>Use <code>Los@Demo2026</code> and an email from the directory.</td></tr>
+            <tr><td>Decision says identity is not complete</td><td>Submit verification before asking for the decision.</td></tr>
+            <tr><td>Key facts will not open</td><td>The outcome is refer, committee, or decline. Those files do not sign. Key facts follow an approval.</td></tr>
+            <tr><td>“That code does not match”</td><td>Use the six-digit demo code on the sign screen. It changes each time the screen loads.</td></tr>
+            <tr><td>Approve on the workbench is refused</td><td>The amount is above your delegation, the justification is shorter than 20 characters, or the case is not referred or waiting for a second approval.</td></tr>
+            <tr><td>Second approval is refused</td><td>You are the same person who recorded the first override, or the case is not in <code>pending_second_approval</code>.</td></tr>
+            <tr><td>Committee vote is refused</td><td>You already voted, or the case has left committee.</td></tr>
+            <tr><td>Disburse is refused</td><td>A required Shariah or condition step is still pending, or the status is not ready.</td></tr>
+            <tr><td>Rule approval is refused</td><td>You drafted it. A different checker has to approve it.</td></tr>
+            <tr><td>Top-up comes back declined or referred</td><td>The re-score failed the cap, the score, or a stop rule such as salary credits stopping. Read the reason on the card.</td></tr>
+            <tr><td>Menu item is missing</td><td>Your role does not include that screen. Sign in as a role from the menu map.</td></tr>
+            <tr><td>Offer shelf is empty for a filter</td><td>That customer has no offer in that family. Switch to All, or open Simulate.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="part" id="part-f" data-audience="both">
+        <h2>Part F — Glossary</h2>
+        <table>
+          <thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td>DBR</td><td>Debt-burden ratio. Instalments as a share of income. The Pakistan pack caps consumer DBR at 40% in the demo.</td></tr>
+            <tr><td>Cover</td><td>Business cash flow divided by the instalment. SME working capital looks for at least 1.5 times.</td></tr>
+            <tr><td>STP</td><td>Straight-through processing. The engine approves and, after signing, disburses without a person, inside the STP limit and only on STP-eligible products.</td></tr>
+            <tr><td>Four-eyes</td><td>A second, different person confirms an approval above Rs 1,000,000.</td></tr>
+            <tr><td>DOA</td><td>Delegation of authority. The amount a user may approve.</td></tr>
+            <tr><td>Score cut-off</td><td>Approve at or above the approve line. Refer between the lines. Decline below the refer line.</td></tr>
+            <tr><td>KFS</td><td>Key facts statement. Amount, tenor, instalment, rate, fee, and total cost, accepted before signature.</td></tr>
+            <tr><td>Sequence</td><td>The ordered evidence a contract needs before disbursement.</td></tr>
+            <tr><td>Holdout</td><td>A share of customers kept out of a campaign so uplift can be measured.</td></tr>
+            <tr><td>Champion / challenger</td><td>The model that makes decisions, and a shadow model that is scored beside it and does not decide.</td></tr>
+            <tr><td>PEP</td><td>Politically exposed person. A match is referred.</td></tr>
+            <tr><td>ECL</td><td>Expected credit loss shown on the workbench from the decision snapshot.</td></tr>
+            <tr><td>Reason code</td><td>A stable identifier, such as <code>DBR_CAP</code>, with customer-safe text in English, Urdu, and Arabic.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="part" id="part-g" data-audience="both">
+        <h2>Part G — Customers in the demo</h2>
+        <table>
+          <thead><tr><th>Name</th><th>Email</th><th>City</th><th>Segment</th><th>Why they are in the book</th></tr></thead>
+          <tbody>
+            <tr><td>Ayesha Khan</td><td><code>ayesha.khan@customer.demo</code></td><td>Karachi</td><td>Salaried</td><td>Pre-approved after 14 salary credits. Has a disbursed loan.</td></tr>
+            <tr><td>Farooq Ahmed</td><td><code>farooq.ahmed@customer.demo</code></td><td>Karachi</td><td>Salaried</td><td>Score in the review band.</td></tr>
+            <tr><td>Nida Pervez</td><td><code>nida.pervez@customer.demo</code></td><td>Lahore</td><td>Salaried</td><td>Instalment would cross the affordability cap.</td></tr>
+            <tr><td>Hamza Qureshi</td><td><code>hamza.qureshi@customer.demo</code></td><td>Karachi</td><td>SME</td><td>Working capital above the committee threshold.</td></tr>
+            <tr><td>Sana Iqbal</td><td><code>sana.iqbal@customer.demo</code></td><td>Karachi</td><td>Thin file</td><td>Regular wallet inflows, no bureau file.</td></tr>
+            <tr><td>Adeel Mir</td><td><code>adeel.mir@customer.demo</code></td><td>Islamabad</td><td>Salaried</td><td>PEP flag routes the case to review.</td></tr>
+            <tr><td>Bilal Hassan</td><td><code>bilal.hassan@customer.demo</code></td><td>Karachi</td><td>Salaried</td><td>Salary credits have stopped. Early warning is open.</td></tr>
+            <tr><td>Nadia Control</td><td><code>nadia.control@customer.demo</code></td><td>Karachi</td><td>Salaried</td><td>Held out of campaigns.</td></tr>
+            <tr><td>Imran Farooqi</td><td><code>imran.farooqi@customer.demo</code></td><td>Riyadh</td><td>Expat</td><td>Saudi parameter pack.</td></tr>
+            <tr><td>Usman Raza</td><td><code>usman.raza@customer.demo</code></td><td>Karachi</td><td>Salaried</td><td>Auto Ijarah waiting on Shariah evidence.</td></tr>
+            <tr><td>Hiba Merchant</td><td><code>hiba.merchant@customer.demo</code></td><td>Karachi</td><td>Salaried</td><td>Walk-in at the dealer counter.</td></tr>
+          </tbody>
+        </table>
+        <p>Customer entry from the welcome screen uses the same demo identity store as staff. Customers do not use the staff password screen.</p>
+        <footer>End of manual. Horizon is an illustrative origination demo for Noor Horizon Bank. Confirm every limit, rate, and disclosure with the current circular before any live lending.</footer>
+      </section>
+    </main>
+  </div>
+  <script>
+    const buttons = document.querySelectorAll('.switch button');
+    const sections = document.querySelectorAll('main section');
+    buttons.forEach((button) => {
+      button.addEventListener('click', () => {
+        buttons.forEach((item) => item.classList.toggle('on', item === button));
+        const filter = button.dataset.filter;
+        sections.forEach((section) => {
+          const audience = section.dataset.audience;
+          const show = filter === 'all' || audience === 'both' || audience === filter;
+          section.classList.toggle('hidden', !show);
+        });
+      });
+    });
+  </script>
+</body>
+</html>

@@ -24,7 +24,7 @@ export default function DealerCounterPage() {
         method: 'POST',
         body: {
           customerId,
-          productCode: 'HBL-ISL-AUT-01',
+          productCode: 'AUTO-IJR',
           amount: Number(amount),
           tenorMonths: 36,
           asset: { description: '2025 Honda City', value: 6500000 },

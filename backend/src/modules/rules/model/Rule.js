@@ -4,7 +4,13 @@ const ruleSchema = new mongoose.Schema(
   {
     code: { type: String, index: true },
     name: String,
-    stage: { type: String, enum: ['eligibility', 'fraud', 'policy', 'pricing'] },
+    stage: { type: String, default: 'eligibility' },
+    ruleType: { type: String, default: 'ELIGIBILITY' },
+    deviationLevel: String,
+    effectiveFrom: Date,
+    effectiveTo: Date,
+    deletedAt: Date,
+    deletedBy: String,
     priority: { type: Number, default: 100 },
     appliesTo: {
       products: { type: [String], default: ['*'] },

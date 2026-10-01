@@ -1,45 +1,64 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { ROLE_LABEL, api } from '../../api/client.js';
+import { api } from '../../api/client.js';
 import { useAuth } from '../../context/AppState.jsx';
 
 const NAV = [
-  ['Work', '/office', 'Dashboard'],
-  ['Work', '/office/queue', 'Work queue'],
-  ['Work', '/office/applications', 'Applications'],
-  ['Work', '/office/customers', 'Customers'],
-  ['Book', '/office/loans', 'Loans'],
-  ['Book', '/office/collections', 'Collections'],
-  ['Finance', '/office/accounting', 'Accounting'],
-  ['Finance', '/office/provisioning', 'Provisioning'],
-  ['Finance', '/office/reports', 'Reports'],
-  ['Factory', '/office/product-factory', 'Product factory'],
-  ['Factory', '/office/configuration', 'Configuration'],
-  ['Factory', '/office/access', 'Access control'],
-  ['Platform', '/office/integrations', 'Integrations'],
-  ['Platform', '/office/audit', 'Audit'],
-  ['Platform', '/office/system', 'System'],
+  ['Work', '/office', 'Dashboard', 'dashboard:view'],
+  ['Work', '/office/queue', 'Work queue', 'application:view'],
+  ['Work', '/office/applications', 'Applications', 'application:view'],
+  ['Work', '/office/customers', 'Customers', 'customer:view'],
+  ['Book', '/office/loans', 'Loans', 'loan:view'],
+  ['Book', '/office/collections', 'Collections', 'collection:view'],
+  ['Finance', '/office/accounting', 'Accounting', 'gl:view'],
+  ['Finance', '/office/provisioning', 'Provisioning', 'provision:view'],
+  ['Finance', '/office/reports', 'Reports', 'report:view'],
+  ['Factory', '/office/product-factory', 'Product factory', 'product:view'],
+  ['Configure', '/office/fields', 'Fields', 'config:view'],
+  ['Configure', '/office/forms', 'Forms', 'config:view'],
+  ['Configure', '/office/rules', 'Rules', 'config:view'],
+  ['Configure', '/office/workflows', 'Workflows', 'config:view'],
+  ['Configure', '/office/scorecards', 'Scorecards', 'config:view'],
+  ['Configure', '/office/masters', 'Master data', 'config:view'],
+  ['Configure', '/office/templates', 'Templates', 'config:view'],
+  ['Configure', '/office/configuration', 'Parameters', 'config:view'],
+  ['Configure', '/office/escalations', 'Escalations', 'config:view'],
+  ['Configure', '/office/organisation', 'Organisation', 'config:view'],
+  ['Access', '/office/access', 'Users, roles and SoD', 'rbac:view'],
+  ['Platform', '/office/integrations', 'Integrations', 'integration:view_logs'],
+  ['Platform', '/office/audit', 'Audit', 'audit:view'],
+  ['Platform', '/office/system', 'System', 'gl:view'],
+];
+
+const EXTENDED = [
+  ['Extended', '/office/campaigns', 'Campaigns'],
+  ['Extended', '/office/dealer', 'Dealer counter'],
+  ['Extended', '/office/schemes', 'Schemes'],
+  ['Extended', '/office/models', 'Model governance'],
+  ['Extended', '/office/shariah', 'Shariah desk'],
+  ['Extended', '/office/warnings', 'Early warning'],
+  ['Extended', '/office/analytics', 'MIS analytics'],
+  ['Extended', '/office/regulatory', 'Regulatory packs'],
+  ['Extended', '/office/rm', 'Relationship manager'],
 ];
 
 export default function OfficeShell() {
-  const { user, logout } = useAuth();
+  const { user, logout, permissions } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [query, setQuery] = useState('');
   const [hits, setHits] = useState([]);
-  const [meta, setMeta] = useState({ businessDate: '2026-10-01', eodStatus: 'COMPLETE' });
+  const [meta, setMeta] = useState({ businessDate: '', eodStatus: '' });
   const [clock, setClock] = useState('');
-  const dealer = user?.role === 'dealer';
-  const items = dealer ? [['Work', '/office/dealer', 'Dealer counter']] : NAV;
+  const extended = import.meta.env.VITE_FEATURES_EXTENDED === 'true';
+  const items = [...NAV, ...(extended ? EXTENDED : [])].filter((row) => !row[3] || permissions.includes(row[3]));
   let lastGroup = '';
 
   useEffect(() => {
-    if (dealer) return undefined;
-    api('/api/platform/overview')
-      .then((data) => setMeta({ businessDate: data.businessDate, eodStatus: data.eodStatus }))
+    api('/api/dashboard')
+      .then((data) => setMeta({ businessDate: data.businessDate || '', eodStatus: 'from journals' }))
       .catch(() => {});
-    return undefined;
-  }, [dealer, location.pathname]);
+  }, [location.pathname]);
 
   useEffect(() => {
     const tick = () => setClock(new Date().toLocaleString('en-PK', { hour12: false }));
@@ -54,7 +73,7 @@ export default function OfficeShell() {
       return undefined;
     }
     const handle = setTimeout(() => {
-      api(`/api/platform/search?q=${encodeURIComponent(query.trim())}`)
+      api(`/api/dashboard/search?q=${encodeURIComponent(query.trim())}`)
         .then((data) => setHits(data.matches || []))
         .catch(() => setHits([]));
     }, 250);
@@ -78,8 +97,13 @@ export default function OfficeShell() {
         {!!hits.length && (
           <div className="search-hits">
             {hits.map((hit) => (
-              <a key={hit.loanAccountNo} href={`/office/loans/${hit.loanAccountNo}`} onClick={(event) => { event.preventDefault(); setQuery(''); setHits([]); navigate(`/office/loans/${hit.loanAccountNo}`); }}>
-                {hit.loanAccountNo} · {hit.cifName}
+              <a key={`${hit.type}-${hit.id}`} href="#result" onClick={(event) => {
+                event.preventDefault();
+                setQuery('');
+                setHits([]);
+                navigate(hit.type === 'loan' ? `/office/loans/${hit.label}` : hit.type === 'application' ? `/office/workbench/${hit.id}` : `/office/customers/${hit.id}`);
+              }}>
+                {hit.label}
               </a>
             ))}
           </div>
@@ -101,7 +125,7 @@ export default function OfficeShell() {
         </nav>
         <div className="who">
           <div>{user?.name}</div>
-          <div className="muted">{ROLE_LABEL[user?.role] || 'Super Admin'}</div>
+          <div className="muted">{user?.username || 'Staff'}</div>
           <button className="ghost" type="button" onClick={async () => { await logout(); navigate('/office/login'); }}>Sign out</button>
         </div>
       </aside>

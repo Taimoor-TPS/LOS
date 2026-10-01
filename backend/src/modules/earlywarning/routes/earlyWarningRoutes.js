@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import { requireAuth, requireRole } from '../../../security/auth.js';
-import { ROLES } from '../../../security/roles.js';
+import { env } from '../../../config/env.js';
+import { requireAuth, requirePermission } from '../../../security/auth.js';
+import { httpError } from '../../../security/http.js';
 import { acknowledge, list } from '../controller/earlyWarningController.js';
 
 const router = Router();
 router.use(requireAuth);
-const roles = [ROLES.RELATIONSHIP_MANAGER, ROLES.CREDIT_OFFICER, ROLES.OPERATIONS, ROLES.SYSTEM_ADMIN, ROLES.COMPLIANCE];
-router.get('/', requireRole(...roles), list);
-router.post('/:id/acknowledge', requireRole(...roles), acknowledge);
-
+router.use((req, res, next) => (env.featuresExtended ? next() : next(httpError(404, 'Not found'))));
+router.get('/', requirePermission('loan:view'), list);
+router.post('/:id/acknowledge', requirePermission('loan:view'), acknowledge);
 export default router;

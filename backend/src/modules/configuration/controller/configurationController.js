@@ -3,7 +3,7 @@ import { ConfigEntry } from '../model/ConfigEntry.js';
 import { parse } from '../../../middleware/validate.js';
 import { asyncHandler, httpError } from '../../../security/http.js';
 import { writeAudit } from '../../../security/audit.js';
-import { canApproveConfig } from '../../../security/roles.js';
+import { checkSoD } from '../../../security/rbac.js';
 import { resolveLayers } from '../../../engine/configurationEngine.js';
 
 const scopeSchema = z.object({
@@ -83,8 +83,8 @@ export const approve = asyncHandler(async (req, res) => {
   const entry = await ConfigEntry.findById(req.params.id);
   if (!entry) throw httpError(404, 'Configuration not found');
   if (entry.status !== 'pending_approval') throw httpError(409, 'This change is not waiting for approval');
-  if (entry.makerId === req.user.id) throw httpError(403, 'Maker cannot approve their own change');
-  if (!canApproveConfig(req.user, entry.key)) throw httpError(403, 'Your role cannot approve this configuration');
+  const sod = await checkSoD(req.user, 'config:publish', entry, { reason: req.body?.reason });
+  entry.selfAuthorised = Boolean(sod.selfAuthorised);
   await ConfigEntry.updateMany({ key: entry.key, scopeKey: entry.scopeKey, status: 'active', _id: { $ne: entry._id } }, { status: 'retired' });
   entry.status = 'active';
   entry.checkerId = req.user.id;

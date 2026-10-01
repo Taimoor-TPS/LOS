@@ -19,11 +19,11 @@ export default function LoansDeskPage() {
   const [error, setError] = useState('');
 
   function loadList() {
-    api('/api/platform/loans').then((data) => setLoans(data.loans || [])).catch((err) => setError(err.message));
+    api('/api/loans?pageSize=50').then((data) => setLoans(data.items || [])).catch((err) => setError(err.message));
   }
 
   function loadOne(id) {
-    api(`/api/platform/loans/${id}`).then((data) => setLoan(data.loan)).catch((err) => setError(err.message));
+    api(`/api/loans/${id}`).then((data) => setLoan(data.loan)).catch((err) => setError(err.message));
   }
 
   useEffect(() => { loadList(); }, []);
@@ -34,11 +34,11 @@ export default function LoansDeskPage() {
     setNotice('');
     setError('');
     try {
-      const body = await api('/api/platform/payments', {
+      const body = await api(`/api/loans/${loan?._id || accountNo}/payments`, {
         method: 'POST',
-        body: { loanAccountNo: accountNo, amount: Number(amount), method, idempotencyKey: `${accountNo}-${amount}-${Date.now()}` },
+        body: { amount: Number(amount), method, idempotencyKey: `${accountNo}-${amount}-${Date.now()}` },
       });
-      setNotice(`${body.receipt.status} · ${body.receipt.reference || body.receipt.id}`);
+      setNotice(body.receipt?.reference || body.transaction?.reference || 'Payment posted');
       loadOne(accountNo);
       loadList();
     } catch (err) {

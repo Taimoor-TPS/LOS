@@ -12,6 +12,24 @@ export async function api(path, { method = 'GET', body } = {}) {
   if (!response.ok) {
     const error = new Error(data.message || 'Request failed');
     error.status = response.status;
+    error.code = data.code;
+    error.details = data.details;
+    throw error;
+  }
+  return data;
+}
+
+export async function apiUpload(path, formData) {
+  const response = await fetch(path, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'X-LOS-Client': 'web' },
+    body: formData,
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(data.message || 'Upload failed');
+    error.status = response.status;
     throw error;
   }
   return data;
@@ -26,6 +44,12 @@ export function money(value, currency = 'PKR') {
 
 export function rateLabel(rate) {
   return `${((Number(rate) || 0) * 100).toFixed(2)}%`;
+}
+
+export function text(value, locale = 'en') {
+  if (value == null) return '';
+  if (typeof value === 'string') return value;
+  return value[locale] || value.en || '';
 }
 
 export const ROLE_LABEL = {

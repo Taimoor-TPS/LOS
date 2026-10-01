@@ -56,13 +56,14 @@ export function AppState({ children }) {
 
   useEffect(() => {
     api('/api/identity/me')
-      .then((data) => setUser(data.user))
+      .then((data) => setUser({ ...data.user, permissions: data.permissions || data.user?.permissions || [] }))
       .catch(() => setUser(null))
       .finally(() => setLoading(false));
   }, []);
 
   const auth = useMemo(() => ({
     user,
+    permissions: user?.permissions || [],
     loading,
     setUser,
     async logout() {

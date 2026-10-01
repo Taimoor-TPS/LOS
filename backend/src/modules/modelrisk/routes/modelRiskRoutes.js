@@ -1,9 +1,11 @@
 import { Router } from 'express';
-import { requireAuth, requireRole } from '../../../security/auth.js';
-import { ROLES } from '../../../security/roles.js';
+import { env } from '../../../config/env.js';
+import { requireAuth, requirePermission } from '../../../security/auth.js';
+import { httpError } from '../../../security/http.js';
 import { list } from '../controller/modelRiskController.js';
 
 const router = Router();
-router.get('/', requireAuth, requireRole(ROLES.MODEL_RISK, ROLES.CREDIT_POLICY, ROLES.COMPLIANCE, ROLES.SYSTEM_ADMIN, ROLES.AUDITOR), list);
-
+router.use(requireAuth);
+router.use((req, res, next) => (env.featuresExtended ? next() : next(httpError(404, 'Not found'))));
+router.get('/', requirePermission('config:view'), list);
 export default router;

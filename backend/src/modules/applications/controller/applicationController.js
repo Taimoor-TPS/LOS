@@ -15,17 +15,19 @@ import { env } from '../../../config/env.js';
 import { buildContractSchedule, quotePayment } from '../../../engine/money.js';
 import { decideApplication, loadPolicy } from '../../../engine/decisionService.js';
 import { completeSteps, sequenceComplete, sequenceFor } from '../../../engine/islamicEngine.js';
-import { ROLES } from '../../../security/roles.js';
+function isCustomer(req) {
+  return req.user?.principal === 'CUSTOMER';
+}
 
 const DIGITAL_STEPS = ['kyc', 'kfs', 'esign', 'account'];
 
 async function loadApplication(req) {
   const application = await Application.findById(req.params.id);
   if (!application) throw httpError(404, 'Application not found');
-  if (req.user.role === ROLES.CUSTOMER && String(application.customerId) !== req.user.customerId) {
+  if (isCustomer(req) && String(application.customerId) !== req.user.customerId) {
     throw httpError(403, 'You do not have access to this application');
   }
-  if (req.user.role === ROLES.DEALER && application.dealerId !== req.user.dealerId) {
+  if (req.user.dealerId && application.dealerId && application.dealerId !== req.user.dealerId) {
     throw httpError(403, 'You do not have access to this application');
   }
   return application;
@@ -83,7 +85,7 @@ export const create = asyncHandler(async (req, res) => {
     schemeCode: z.string().optional(),
   }), req.body);
 
-  const customerId = req.user.role === ROLES.CUSTOMER ? req.user.customerId : body.customerId;
+  const customerId = isCustomer(req) ? req.user.customerId : body.customerId;
   if (!customerId) throw httpError(400, 'Customer is required');
   const customer = await Customer.findById(customerId);
   if (!customer) throw httpError(404, 'Customer not found');
@@ -111,7 +113,7 @@ export const create = asyncHandler(async (req, res) => {
     customerId: customer._id,
     productCode: product.code,
     offerId: body.offerId,
-    channel: body.channel || (req.user.role === ROLES.CUSTOMER ? 'app' : 'assisted'),
+    channel: body.channel || (isCustomer(req) ? 'app' : 'assisted'),
     branchId: customer.branchId,
     dealerId: req.user.dealerId || '',
     jurisdiction: customer.jurisdiction,
@@ -125,7 +127,7 @@ export const create = asyncHandler(async (req, res) => {
     sequence: sequenceFor(product.contractType, sequences),
     asset: body.asset,
     schemeCode: body.schemeCode || '',
-    assignedTo: req.user.role === ROLES.CUSTOMER ? '' : req.user.name,
+    assignedTo: isCustomer(req) ? '' : req.user.id,
   });
   await writeAudit(req, { action: 'application_create', resource: 'application', resourceId: application._id });
   res.status(201).json({ application: presentApplication(application) });
@@ -133,8 +135,8 @@ export const create = asyncHandler(async (req, res) => {
 
 export const list = asyncHandler(async (req, res) => {
   const filter = { tenantId: req.user.tenantId };
-  if (req.user.role === ROLES.CUSTOMER) filter.customerId = req.user.customerId;
-  if (req.user.role === ROLES.DEALER) filter.dealerId = req.user.dealerId;
+  if (isCustomer(req)) filter.customerId = req.user.customerId;
+  if (req.user.dealerId) filter.dealerId = req.user.dealerId;
   if (req.query.status) filter.status = String(req.query.status);
   const applications = await Application.find(filter).sort({ updatedAt: -1 }).limit(200).lean();
   const customers = await Customer.find({ _id: { $in: applications.map((item) => item.customerId) } }).lean();
@@ -239,6 +241,7 @@ export const verify = asyncHandler(async (req, res) => {
 });
 
 export const decide = asyncHandler(async (req, res) => {
+  if (isCustomer(req)) throw httpError(403, 'Customers cannot decide an application');
   const application = await loadApplication(req);
   if (!['verified', 'draft', 'referred'].includes(application.status) && application.status !== 'verified') {
     if (application.decision && application.status !== 'verified') {

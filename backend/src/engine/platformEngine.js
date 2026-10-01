@@ -223,7 +223,16 @@ export function identityFromId(idNumber) {
   if (tail === '0004') {
     return { cardStatus: 'EXPIRED', flag: 'KYC_MANUAL', bureau: 'not_called', message: 'Card status is not VALID.' };
   }
-  return { cardStatus: 'VALID', flag: null, bureau: 'clear', message: 'Identity verified. Bureau is clear.' };
+  if (tail === '0005') {
+    return { cardStatus: 'VALID', flag: 'FACE_MATCH_LOW', bureau: 'clear', faceScore: 42, message: 'Face match is below the threshold.' };
+  }
+  if (tail === '0006') {
+    return { cardStatus: 'VALID', flag: null, bureau: 'timeout', message: 'Bureau did not respond in time.' };
+  }
+  if (tail === '0001') {
+    return { cardStatus: 'VALID', flag: null, bureau: 'clear', bureauScore: 742, message: 'Identity verified. Bureau is clear.' };
+  }
+  return { cardStatus: 'VALID', flag: null, bureau: 'clear', bureauScore: 700, message: 'Identity verified. Bureau is clear.' };
 }
 
 export function annualPercentageRate({ netDisbursed, instalment, tenorMonths }) {
@@ -252,6 +261,11 @@ export function annualPercentageRate({ netDisbursed, instalment, tenorMonths }) 
 
 export function journalBalances(lines) {
   return lines.reduce((sum, line) => sum + roundMoney(line.dr) - roundMoney(line.cr), 0);
+}
+
+export function approvalGate({ openDeviations, applicationNo }) {
+  if (openDeviations > 0) throw new Error('Approval is blocked while a policy deviation is open');
+  return { applicationNo, outcome: 'APPROVED' };
 }
 
 export function trialBalance(journals) {

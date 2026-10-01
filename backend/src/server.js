@@ -1,12 +1,14 @@
 import { createApp } from './app.js';
 import { connectDb } from './config/db.js';
 import { env } from './config/env.js';
+import { syncCatalogue } from './security/rbac.js';
 
 const app = createApp();
 connectDb()
-  .then(() => {
+  .then(async () => {
+    await syncCatalogue();
     app.listen(env.port, () => {
-      console.log(`HBL LOS API listening on ${env.port}`);
+      console.log(`Lending platform API listening on ${env.port}`);
     });
   })
   .catch((err) => {

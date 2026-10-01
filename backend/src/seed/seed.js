@@ -1,30 +1,31 @@
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { connectDb } from '../config/db.js';
 import { hashPassword } from '../security/password.js';
-import { encryptField, last4 } from '../security/crypto.js';
-import { ageFromDob, buildSchedule, quotePayment } from '../engine/money.js';
-import { HBL_CODES, hblProducts } from '../catalogue/hblProducts.js';
-import { sequenceFor } from '../engine/islamicEngine.js';
-import { SEQUENCES } from '../engine/islamicEngine.js';
-import { decideApplication, loadPolicy } from '../engine/decisionService.js';
-import { User } from '../modules/identity/model/User.js';
-import { Customer, Consent } from '../modules/customers/model/Customer.js';
+import { syncCatalogue } from '../security/rbac.js';
+import { PERMISSION_CODES } from '../security/permissions.js';
+import { User, Role, SodRule } from '../modules/identity/model/User.js';
 import { Product } from '../modules/products/model/Product.js';
 import { ConfigEntry } from '../modules/configuration/model/ConfigEntry.js';
 import { Scorecard } from '../modules/scorecards/model/Scorecard.js';
 import { Rule } from '../modules/rules/model/Rule.js';
-import { Application, DecisionRecord, Counter } from '../modules/applications/model/Application.js';
-import { Offer, Campaign } from '../modules/engagement/model/Offer.js';
-import { LoanAccount, ServicingRequest } from '../modules/servicing/model/LoanAccount.js';
-import { AuditLog } from '../modules/compliance/model/AuditLog.js';
-import { Scheme } from '../modules/schemes/model/Scheme.js';
-import { Dealer } from '../modules/dealers/model/Dealer.js';
-import { EarlyWarning } from '../modules/earlywarning/model/EarlyWarning.js';
-import { ModelCard } from '../modules/modelrisk/model/ModelCard.js';
-import { AdapterRun } from '../modules/integrations/model/AdapterRun.js';
-import { DocumentTemplate } from '../modules/documents/model/DocumentTemplate.js';
+import { SEQUENCES } from '../engine/islamicEngine.js';
+import {
+  FieldDefinition, Form, FormVersion, Workflow, MasterList, Template, EscalationRule,
+  Branch, Entity, Holiday, GLAccount, AccountingTemplate, ClassificationRegime,
+  IntegrationConfig, ReportDefinition,
+} from '../models/platformModels.js';
+import mongoose from 'mongoose';
 
 const TENANT = 'noor-horizon';
-const PASSWORD = 'Los@Demo2026';
+
+function config(key, level, scope, value) {
+  return { key, scope: { level, ...scope }, value, version: 1, status: 'active', makerName: 'Seed', checkerName: 'Seed' };
+}
+
+function leg(side, gl, amount, name) {
+  return { side, gl, amount, name };
+}
 
 const bands = {
   bureau: [{ min: 720, points: 100 }, { min: 680, points: 85 }, { min: 640, points: 70 }, { min: 600, points: 55 }, { min: 0, points: 20 }],
@@ -32,284 +33,340 @@ const bands = {
   salary: [{ min: 12, points: 100 }, { min: 6, points: 70 }, { min: 3, points: 45 }, { min: 0, points: 15 }],
   years: [{ min: 3, points: 100 }, { min: 1, points: 60 }, { min: 0, points: 25 }],
   stability: [{ min: 75, points: 90 }, { min: 60, points: 70 }, { min: 40, points: 50 }, { min: 0, points: 20 }],
-  alt: [{ min: 75, points: 90 }, { min: 60, points: 75 }, { min: 50, points: 55 }, { min: 0, points: 20 }],
 };
 
-const products = hblProducts;
-
-function card(partial) {
-  return { version: 1, status: 'active', champion: true, pd: { midpoint: 50, slope: 8 }, makerName: 'Seed', checkerName: 'Model risk', ...partial };
+function section(code, title, fields) {
+  return { code, title: { en: title, ur: title, ar: title }, columns: 1, fields };
 }
 
-const scorecards = [
-  card({ code: 'SC-RET-UNS', name: 'Retail unsecured scorecard', products: [HBL_CODES.PL, HBL_CODES.IPF], segments: ['salaried', 'self_employed', 'expat'], approveCutoff: 72, referCutoff: 55, factors: [
-    { key: 'bureauScore', label: 'Bureau', weight: 30, bands: bands.bureau },
-    { key: 'capacityScore', label: 'Affordability headroom', weight: 25, bands: bands.capacity },
-    { key: 'salaryMonths', label: 'Salary continuity', weight: 20, bands: bands.salary },
-    { key: 'relationshipYears', label: 'Relationship', weight: 15, bands: bands.years },
-    { key: 'cashflowStability', label: 'Balance stability', weight: 10, bands: bands.stability },
-  ] }),
-  card({ code: 'SC-SME-OBL', name: 'SME obligor scorecard', products: [HBL_CODES.SW, HBL_CODES.SM], segments: ['sme'], approveCutoff: 70, referCutoff: 55, factors: [
-    { key: 'cashflowStability', label: 'Cash-flow stability', weight: 30, bands: bands.stability },
-    { key: 'capacityScore', label: 'Cover', weight: 30, bands: bands.capacity },
-    { key: 'bureauScore', label: 'Bureau', weight: 25, bands: bands.bureau },
-    { key: 'relationshipYears', label: 'Relationship', weight: 15, bands: bands.years },
-  ] }),
-  card({ code: 'SC-RET-AST', name: 'Retail asset scorecard', products: [HBL_CODES.AL, HBL_CODES.AI], segments: ['salaried', 'self_employed', 'expat'], approveCutoff: 72, referCutoff: 55, factors: [
-    { key: 'bureauScore', label: 'Bureau', weight: 25, bands: bands.bureau },
-    { key: 'capacityScore', label: 'Affordability', weight: 30, bands: bands.capacity },
-    { key: 'salaryMonths', label: 'Income continuity', weight: 20, bands: bands.salary },
-    { key: 'relationshipYears', label: 'Relationship', weight: 15, bands: bands.years },
-    { key: 'cashflowStability', label: 'Stability', weight: 10, bands: bands.stability },
-  ] }),
-  card({ code: 'SC-RET-MTG', name: 'Retail mortgage scorecard', products: [HBL_CODES.HL, HBL_CODES.HD], segments: ['salaried', 'self_employed', 'expat'], approveCutoff: 74, referCutoff: 58, factors: [
-    { key: 'bureauScore', label: 'Bureau', weight: 25, bands: bands.bureau },
-    { key: 'capacityScore', label: 'Affordability', weight: 30, bands: bands.capacity },
-    { key: 'salaryMonths', label: 'Income continuity', weight: 20, bands: bands.salary },
-    { key: 'relationshipYears', label: 'Relationship', weight: 15, bands: bands.years },
-    { key: 'cashflowStability', label: 'Stability', weight: 10, bands: bands.stability },
-  ] }),
-];
-
-function config(key, level, scope, value) {
-  return { key, scope: { level, ...scope }, value, version: 1, status: 'active', makerName: 'Credit policy', checkerName: 'Compliance', comment: 'Illustrative pack. Confirm with the current circular before live lending.' };
+function field(fieldCode, required = true) {
+  return { fieldCode, required, visibleWhen: '', editableWhen: '', helpText: '' };
 }
 
-const people = [
-  { key: 'ayesha', fullName: 'Ayesha Khan', nameUr: 'عائشہ خان', email: 'ayesha.khan@customer.demo', cnic: '4210112345671', phone: '03001234567', dob: '1994-04-12', city: 'Karachi', segment: 'salaried', employmentType: 'salaried', employer: 'Northwind Digital', monthlyIncome: 185000, monthlyObligations: 35000, salaryMonths: 14, cashflowMonthly: 185000, cashflowStability: 78, altDataQuality: 40, relationshipYears: 4, existingExposure: 180000, bureauScore: 742, onTimePayments: 6, lifeEvents: ['salary_rise'], accountMasked: '****1234', blurb: 'Pre-approved after 14 steady salary credits.', branchId: 'khi-clifton' },
-  { key: 'farooq', fullName: 'Farooq Ahmed', nameUr: 'فاروق احمد', email: 'farooq.ahmed@customer.demo', cnic: '4220198765432', phone: '03007654321', dob: '1991-09-02', city: 'Karachi', segment: 'salaried', employmentType: 'salaried', employer: 'Habib Trading', monthlyIncome: 200000, monthlyObligations: 20000, salaryMonths: 7, cashflowStability: 45, relationshipYears: 1, bureauScore: 630, accountMasked: '****4481', blurb: 'Score sits in the review band.', branchId: 'khi-gulshan' },
-  { key: 'nida', fullName: 'Nida Pervez', nameUr: 'ندا پرویز', email: 'nida.pervez@customer.demo', cnic: '4210155512348', phone: '03015551234', dob: '1996-01-20', city: 'Lahore', segment: 'salaried', employmentType: 'salaried', employer: 'City Schools', monthlyIncome: 100000, monthlyObligations: 48000, salaryMonths: 18, cashflowStability: 60, relationshipYears: 2, bureauScore: 690, accountMasked: '****2201', blurb: 'Instalment would cross the affordability cap.', branchId: 'lhe-gulberg' },
-  { key: 'hamza', fullName: 'Hamza Qureshi', nameUr: 'حمزہ قریشی', email: 'hamza.qureshi@customer.demo', cnic: '4230188899913', phone: '03218889991', dob: '1985-06-18', city: 'Karachi', segment: 'sme', employmentType: 'self_employed', employer: 'Qureshi Electricals', monthlyIncome: 0, monthlyObligations: 90000, cashflowMonthly: 420000, cashflowStability: 80, relationshipYears: 5, bureauScore: 700, salaryMonths: 24, accountMasked: '****9012', blurb: 'Working capital above the committee threshold.', branchId: 'khi-clifton' },
-  { key: 'sana', fullName: 'Sana Iqbal', nameUr: 'ثنا اقبال', email: 'sana.iqbal@customer.demo', cnic: '4210100045676', phone: '03330004567', dob: '2001-11-03', city: 'Karachi', segment: 'salaried', employmentType: 'salaried', employer: 'Studio payroll', monthlyIncome: 55000, monthlyObligations: 5000, salaryMonths: 8, cashflowStability: 62, altDataQuality: 76, relationshipYears: 1, bureauScore: 610, accountMasked: '****6670', blurb: 'Income fits a personal loan. The score sits in review.', branchId: 'khi-clifton' },
-  { key: 'adeel', fullName: 'Adeel Mir', nameUr: 'عدیل میر', email: 'adeel.mir@customer.demo', cnic: '6110199911125', phone: '03019991112', dob: '1988-02-14', city: 'Islamabad', segment: 'salaried', employmentType: 'salaried', employer: 'Public Works', monthlyIncome: 220000, monthlyObligations: 30000, salaryMonths: 20, cashflowStability: 80, relationshipYears: 6, bureauScore: 760, pepFlag: true, accountMasked: '****1188', blurb: 'PEP flag routes the case to review.', branchId: 'isb-f7' },
-  { key: 'bilal', fullName: 'Bilal Hassan', nameUr: 'بلال حسن', email: 'bilal.hassan@customer.demo', cnic: '4210177700019', phone: '03017770001', dob: '1990-08-08', city: 'Karachi', segment: 'salaried', employmentType: 'salaried', employer: 'Former retailer', monthlyIncome: 90000, monthlyObligations: 15000, salaryMonths: 0, salaryStopped: true, cashflowStability: 20, relationshipYears: 3, bureauScore: 640, accountMasked: '****3004', blurb: 'Salary credits have stopped.', branchId: 'khi-gulshan' },
-  { key: 'nadia', fullName: 'Nadia Control', nameUr: 'نادیہ کنٹرول', email: 'nadia.control@customer.demo', cnic: '4210122200094', phone: '03012220009', dob: '1993-03-03', city: 'Karachi', segment: 'salaried', employmentType: 'salaried', employer: 'Holdout sample', monthlyIncome: 160000, monthlyObligations: 20000, salaryMonths: 16, cashflowStability: 70, relationshipYears: 3, bureauScore: 710, holdout: true, accountMasked: '****5050', blurb: 'Held out of campaigns so uplift can be measured.', branchId: 'khi-clifton' },
-  { key: 'imran', fullName: 'Imran Farooqi', nameUr: 'عمران فاروقی', email: 'imran.farooqi@customer.demo', cnic: '7841990123456', phone: '03015550999', dob: '1987-12-01', city: 'Karachi', segment: 'expat', residency: 'resident', employmentType: 'salaried', employer: 'Gulf Logistics', monthlyIncome: 180000, monthlyObligations: 20000, salaryMonths: 18, cashflowStability: 75, relationshipYears: 2, bureauScore: 690, accountMasked: '****7711', blurb: 'Overseas Pakistani salary credits, eligible for retail products.', branchId: 'khi-clifton' },
-  { key: 'usman', fullName: 'Usman Raza', nameUr: 'عثمان رضا', email: 'usman.raza@customer.demo', cnic: '4210166612340', phone: '03016661234', dob: '1992-05-22', city: 'Karachi', segment: 'salaried', employmentType: 'salaried', employer: 'Port Authority', monthlyIncome: 210000, monthlyObligations: 25000, salaryMonths: 16, cashflowStability: 82, relationshipYears: 4, bureauScore: 735, accountMasked: '****8181', blurb: 'Auto Ijarah waiting on Shariah evidence.', branchId: 'khi-clifton' },
-  { key: 'hiba', fullName: 'Hiba Merchant', nameUr: 'ہبہ مرچنٹ', email: 'hiba.merchant@customer.demo', cnic: '4210144455567', phone: '03014445556', dob: '1995-07-19', city: 'Karachi', segment: 'salaried', employmentType: 'salaried', employer: 'Studio North', monthlyIncome: 150000, monthlyObligations: 12000, salaryMonths: 11, cashflowStability: 70, relationshipYears: 1, bureauScore: 705, accountMasked: '****4242', blurb: 'Walk-in available at the dealer counter.', branchId: 'khi-clifton' },
+const systemFields = [
+  ['full_name', 'Full name', 'TEXT', 'CUSTOMER'],
+  ['father_name', 'Father name', 'TEXT', 'CUSTOMER'],
+  ['date_of_birth', 'Date of birth', 'DATE', 'CUSTOMER'],
+  ['gender', 'Gender', 'LIST_SINGLE', 'CUSTOMER', 'genders'],
+  ['cnic', 'Identity number', 'CNIC', 'CUSTOMER'],
+  ['mobile', 'Mobile', 'MOBILE', 'CUSTOMER'],
+  ['email', 'Email', 'EMAIL', 'CUSTOMER'],
+  ['current_address', 'Current address', 'ADDRESS', 'CUSTOMER'],
+  ['city', 'City', 'LIST_SINGLE', 'CUSTOMER', 'cities'],
+  ['residence_type', 'Residence type', 'LIST_SINGLE', 'CUSTOMER', 'residence_types'],
+  ['employment_type', 'Employment type', 'LIST_SINGLE', 'EMPLOYMENT', 'employment_types'],
+  ['employer_name', 'Employer', 'LIST_SINGLE', 'EMPLOYMENT', 'employers'],
+  ['gross_monthly_income', 'Gross monthly income', 'AMOUNT', 'EMPLOYMENT'],
+  ['net_monthly_income', 'Net monthly income', 'AMOUNT', 'EMPLOYMENT'],
+  ['monthly_obligations', 'Monthly obligations', 'AMOUNT', 'APPLICANT'],
+  ['requested_amount', 'Requested amount', 'AMOUNT', 'APPLICATION'],
+  ['tenor_months', 'Tenor (months)', 'INTEGER', 'APPLICATION'],
+  ['purpose_code', 'Purpose', 'LIST_SINGLE', 'APPLICATION', 'purpose_codes'],
+].map(([fieldCode, label, dataType, entityScope, lookupList]) => ({
+  fieldCode,
+  label: { en: label, ur: label, ar: label },
+  dataType,
+  entityScope,
+  lookupList: lookupList || '',
+  source: ['cnic', 'full_name', 'date_of_birth'].includes(fieldCode) ? 'PREFILL_NADRA' : 'USER_INPUT',
+  isSystem: true,
+  status: 'ACTIVE',
+  piiClass: ['cnic', 'mobile', 'email', 'current_address'].includes(fieldCode) ? 'HIGH' : 'NONE',
+  validation: { required: true },
+}));
+
+const workflowStages = [
+  ['S0', 'Draft', 'Draft saved', 'application:create', ['SUBMIT']],
+  ['S1', 'Submitted', 'Application received', 'application:view', []],
+  ['S2', 'Credit review', 'Under review', 'application:recommend', ['APPROVE', 'DECLINE', 'RETURN', 'REFER']],
+  ['S3', 'Referred', 'Under review', 'application:approve', ['APPROVE', 'DECLINE', 'RETURN']],
+  ['S4', 'Offer', 'Approved', 'application:view', []],
+  ['S5', 'Offer accepted', 'Offer accepted', 'application:view', []],
+  ['S6', 'Final checks', 'Final checks', 'disbursement:initiate', ['APPROVE', 'RETURN']],
+  ['S7', 'Disbursement', 'Funds sent', 'disbursement:authorise', ['APPROVE']],
+  ['S8', 'Booked', 'Funds sent', 'loan:view', []],
+].map(([code, name, customerMilestone, roleQueuePermission, allowedOutcomes]) => ({
+  code, name, customerMilestone, roleQueuePermission, allowedOutcomes, slaHours: code === 'S2' ? 16 : 24, amberPct: 70,
+  formBinding: code === 'S0' ? 'S0' : '', entryActions: [], checklist: [],
+}));
+
+const transitions = [
+  { from: 'S0', outcome: 'SUBMIT', to: 'S1' },
+  { from: 'S2', outcome: 'APPROVE', to: 'S4' },
+  { from: 'S2', outcome: 'DECLINE', to: 'S2' },
+  { from: 'S2', outcome: 'RETURN', to: 'S0' },
+  { from: 'S2', outcome: 'REFER', to: 'S3' },
+  { from: 'S3', outcome: 'APPROVE', to: 'S4' },
+  { from: 'S3', outcome: 'DECLINE', to: 'S3' },
+  { from: 'S3', outcome: 'RETURN', to: 'S2' },
+  { from: 'S6', outcome: 'APPROVE', to: 'S7' },
+  { from: 'S7', outcome: 'APPROVE', to: 'S8' },
 ];
 
-const staff = [
-  ['Zara Qureshi', 'zara.qureshi@noorhorizon.demo', 'relationship_manager', 'khi-clifton', 500000],
-  ['Omar Siddiqui', 'omar.siddiqui@noorhorizon.demo', 'underwriter', 'khi-clifton', 2000000],
-  ['Sadia Rahman', 'sadia.rahman@noorhorizon.demo', 'credit_officer', 'khi-clifton', 5000000],
-  ['Hina Baig', 'hina.baig@noorhorizon.demo', 'credit_committee', 'khi-clifton', 0],
-  ['Kamran Ali', 'kamran.ali@noorhorizon.demo', 'credit_committee', 'khi-clifton', 0],
-  ['Farah Naveed', 'farah.naveed@noorhorizon.demo', 'operations', 'khi-clifton', 0],
-  ['Idrees Qadri', 'idrees.qadri@noorhorizon.demo', 'shariah_advisor', 'khi-clifton', 0],
-  ['Meher Khan', 'meher.khan@noorhorizon.demo', 'marketing', 'khi-clifton', 0],
-  ['Tariq Jameel', 'tariq.jameel@noorhorizon.demo', 'credit_policy', 'khi-clifton', 0],
-  ['Hira Latif', 'hira.latif@noorhorizon.demo', 'model_risk', 'khi-clifton', 0],
-  ['Rabia Noor', 'rabia.noor@noorhorizon.demo', 'compliance', 'khi-clifton', 0],
-  ['Imtiaz Shah', 'imtiaz.shah@noorhorizon.demo', 'auditor', 'khi-clifton', 0],
-  ['Noman Dealer', 'noman.dealer@noorhorizon.demo', 'dealer', 'khi-clifton', 3000000],
-  ['HBL Admin', 'admin@noorhorizon.demo', 'system_admin', 'khi-clifton', 0],
-];
-
-async function openCase({ customer, product, amount, tenor, channel = 'app', hoursAgo = 1, asset, dealerId = '' }) {
-  const policy = await loadPolicy({
-    jurisdiction: customer.jurisdiction,
-    tenantId: TENANT,
-    segment: customer.segment,
-    productCode: product.code,
-    channel,
-    entityId: customer.branchId,
-  });
-  const application = await Application.create({
-    tenantId: TENANT,
-    reference: `APP-${new Date().getFullYear()}-${String((await Counter.findOneAndUpdate({ _id: 'application' }, { $inc: { seq: 1 } }, { upsert: true, new: true })).seq).padStart(8, '0')}`,
-    customerId: customer._id,
-    productCode: product.code,
-    channel,
-    branchId: customer.branchId,
-    dealerId,
-    jurisdiction: customer.jurisdiction,
-    contractType: product.contractType,
-    currency: product.currency,
-    amount,
-    tenorMonths: tenor,
-    indicativeRate: product.baseRate,
-    indicativeInstalment: quotePayment(product, amount, product.baseRate, tenor),
-    status: 'verified',
-    kycStatus: 'verified',
-    submittedAt: new Date(Date.now() - hoursAgo * 3600 * 1000),
-    screening: { sanctions: false, pep: Boolean(customer.pepFlag), adverseMedia: false, provider: 'screening-simulator' },
-    bureau: { score: customer.bureauScore || 0, worstDpd: 0, writeOff: false, source: customer.jurisdiction === 'KSA' ? 'simah' : 'ecib', pulledAt: new Date() },
-    incomeVerified: true,
-    incomeSource: product.affordabilityMode === 'cashflow' ? 'cashflow' : 'salary_credits',
-    sequence: sequenceFor(product.contractType, policy['islamic.sequences']?.value),
-    asset,
-  });
-  await decideApplication({ application, customer, actor: { id: 'seed', name: 'Decision engine', role: 'system' } });
-  return application;
+function product(partial) {
+  return {
+    currency: 'PKR',
+    jurisdiction: 'PK',
+    status: 'PUBLISHED',
+    version: 1,
+    channels: ['MOBILE', 'BACKOFFICE'],
+    showInCatalogue: true,
+    workflowCode: 'WF-RETAIL',
+    scorecardCode: 'SC-RET-UNS',
+    glTemplateCode: 'RETAIL',
+    amountStep: 5000,
+    tenorStep: 6,
+    feeRate: 0.01,
+    minRate: 0.12,
+    maxRate: 0.28,
+    affordabilityMode: 'dbr',
+    repaymentMode: 'auto_debit',
+    documentRequirements: [
+      { code: 'CNIC', label: 'Identity card' },
+      { code: 'SALARY_SLIP', label: 'Salary slip' },
+    ],
+    presentation: { benefits: ['Fixed instalment', 'Early settlement'], displayOrder: 1 },
+    ...partial,
+  };
 }
 
-async function seed() {
+const accounts = [
+  ['1000', 'Cash and bank', 'ASSET'],
+  ['1310', 'Loans receivable', 'ASSET'],
+  ['1320', 'Interest receivable', 'ASSET'],
+  ['1330', 'Fees receivable', 'ASSET'],
+  ['1390', 'Provision reserve', 'ASSET'],
+  ['1990', 'Disbursement clearing', 'ASSET'],
+  ['2100', 'Excess payments', 'LIABILITY'],
+  ['2300', 'Charity payable', 'LIABILITY'],
+  ['4100', 'Fee income', 'INCOME'],
+  ['4150', 'Insurance payable', 'LIABILITY'],
+  ['4200', 'Interest income', 'INCOME'],
+  ['4300', 'Late charge income', 'INCOME'],
+  ['4800', 'Recovery income', 'INCOME'],
+  ['6100', 'Provision expense', 'EXPENSE'],
+  ['6800', 'Write-off expense', 'EXPENSE'],
+  ['9100', 'Memo interest suspense', 'MEMO'],
+  ['9101', 'Memo interest offset', 'MEMO'],
+];
+
+const events = {
+  E1: ['Disbursement', [leg('DR', '1310', 'principal', 'Loans'), leg('CR', '1990', 'principal', 'Clearing')]],
+  E2: ['Fee deducted', [leg('DR', '1990', 'fees', 'Clearing'), leg('CR', '4100', 'fees', 'Fee income')]],
+  E3: ['Insurance deducted', [leg('DR', '1990', 'insurance', 'Clearing'), leg('CR', '4150', 'insurance', 'Insurance')]],
+  E4: ['Interest accrual', [leg('DR', '1320', 'interest', 'Receivable'), leg('CR', '4200', 'interest', 'Income')]],
+  E5: ['Late charge', [leg('DR', '1330', 'charges', 'Fees'), leg('CR', '4300', 'charges', 'Income')]],
+  E6: ['Repayment', [
+    leg('DR', '1000', 'amount', 'Bank'), leg('CR', '1310', 'principal', 'Loans'), leg('CR', '4200', 'interest', 'Income'),
+    leg('CR', '4100', 'fees', 'Fees'), leg('CR', '2300', 'charity', 'Charity'), leg('CR', '2100', 'excess', 'Excess'),
+  ]],
+  E12: ['NPL memo accrual', [leg('DR', '9100', 'interest', 'Memo'), leg('CR', '9101', 'interest', 'Memo offset')]],
+  E14: ['Provision charge', [leg('DR', '6100', 'provisionDelta', 'Expense'), leg('CR', '1390', 'provisionDelta', 'Reserve')]],
+  E15: ['Provision release', [leg('DR', '1390', 'provisionDelta', 'Reserve'), leg('CR', '6100', 'provisionDelta', 'Expense')]],
+  E16: ['Write-off', [leg('DR', '6800', 'principal', 'Expense'), leg('CR', '1310', 'principal', 'Loans')]],
+  E17: ['Recovery', [leg('DR', '1000', 'amount', 'Bank'), leg('CR', '4800', 'amount', 'Recovery')]],
+  E22: ['Customer payout', [leg('DR', '1990', 'netDisbursed', 'Clearing'), leg('CR', '1000', 'netDisbursed', 'Bank')]],
+};
+
+const captureFields = [
+  field('requested_amount'), field('tenor_months'), field('purpose_code', false),
+  field('employment_type'), field('employer_name', false), field('gross_monthly_income'), field('net_monthly_income'), field('monthly_obligations', false),
+];
+
+export async function runSeed({ disconnect = true } = {}) {
+  const password = process.env.ADMIN_INITIAL_PASSWORD;
+  if (!password) {
+    throw new Error('ADMIN_INITIAL_PASSWORD is required. Set it in backend/.env before seeding. The API will not invent a password.');
+  }
+  const passwordHash = await hashPassword(password);
   await connectDb();
-  await Promise.all([
-    User.deleteMany({}), Customer.deleteMany({}), Consent.deleteMany({}), Product.deleteMany({}),
-    ConfigEntry.deleteMany({}), Scorecard.deleteMany({}), Rule.deleteMany({}), Application.deleteMany({}),
-    DecisionRecord.deleteMany({}), Counter.deleteMany({}), Offer.deleteMany({}), Campaign.deleteMany({}),
-    LoanAccount.deleteMany({}), ServicingRequest.deleteMany({}), AuditLog.deleteMany({}), Scheme.deleteMany({}),
-    Dealer.deleteMany({}), EarlyWarning.deleteMany({}), ModelCard.deleteMany({}), AdapterRun.deleteMany({}),
-    DocumentTemplate.deleteMany({}),
-  ]);
+  await mongoose.connection.dropDatabase();
+  await syncCatalogue();
+  const superRole = await Role.findOne({ code: 'SUPER_ADMIN' });
+  superRole.permissions = PERMISSION_CODES;
+  superRole.isSystem = true;
+  superRole.maxScope = 'ALL';
+  superRole.doa = [{ productFamily: '*', maxAmount: 999999999999, maxExposure: 999999999999, maxDeviationLevel: 'D3', maxRateConcessionBps: 10000, maxFeeWaiverPct: 100, maxTenorMonths: 360 }];
+  await superRole.save();
 
-  await Product.create(products);
-  await Scorecard.create(scorecards);
-  await ConfigEntry.create([
-    config('regulatory.dbr', 'system', {}, { maxDbr: 0.5, minAge: 18, maxAge: 70, maxDpd: 90, allowNonResident: false, offerValidityDays: 14, minCashflowCover: 1.3, referBuffer: 0.05, referBufferCover: 0.2, groupExposureCap: 50000000, illustrative: true }),
-    config('regulatory.dbr', 'jurisdiction', { jurisdiction: 'PK' }, { maxDbr: 0.4, minAge: 21, maxAge: 60, maxAgeAtMaturity: 65, offerValidityDays: 7, authority: 'SBP', packName: 'Pakistan consumer pack', illustrative: true, minCashflowCover: 1.25 }),
-    config('regulatory.dbr', 'jurisdiction', { jurisdiction: 'KSA' }, { maxDbr: 0.33, minAge: 21, maxAge: 60, offerValidityDays: 5, authority: 'SAMA', packName: 'Saudi responsible lending pack', allowNonResident: true, illustrative: true }),
-    config('regulatory.dbr', 'jurisdiction', { jurisdiction: 'UAE' }, { maxDbr: 0.5, minAge: 21, maxAge: 65, offerValidityDays: 5, authority: 'CBUAE', packName: 'UAE consumer pack', illustrative: true }),
-    config('regulatory.dbr', 'tenant', { tenantId: TENANT }, { packName: 'HBL overlay' }),
-    config('regulatory.dbr', 'product', { productCode: HBL_CODES.HL }, { maxDbr: 0.5 }),
-    config('regulatory.dbr', 'product', { productCode: HBL_CODES.HD }, { maxDbr: 0.5 }),
-    config('regulatory.dbr', 'product', { productCode: HBL_CODES.SW }, { minCashflowCover: 1.25 }),
-    config('regulatory.dbr', 'product', { productCode: HBL_CODES.SM }, { minCashflowCover: 1.25 }),
-    config('pricing.bands', 'system', {}, { floorRate: 0.08, capRate: 0.28, relationshipYears: 3, relationshipDiscount: 0.005, grades: [{ minScore: 80, premium: 0, label: 'A' }, { minScore: 72, premium: 0.005, label: 'B' }, { minScore: 55, premium: 0.015, label: 'C' }, { minScore: 0, premium: 0.03, label: 'D' }] }),
-    config('doa.matrix', 'system', {}, { stpLimit: 1500000, officerLimit: 5000000, committeeAbove: 5000000, fourEyesAbove: 1000000, slaHours: 4, groupExposureCap: 25000000 }),
-    config('fraud.thresholds', 'system', {}, { duplicateRefer: 2, duplicateDecline: 4, deviceReferScore: 70, pepOutcome: 'refer' }),
-    config('islamic.sequences', 'system', {}, SEQUENCES),
-    config('engagement.frequency', 'system', {}, { maxContactsPer7Days: 2, maxContactsPer30Days: 4, quietHours: [22, 8] }),
-    config('bank.profile', 'tenant', { tenantId: TENANT }, { name: 'Habib Bank Limited', shortName: 'HBL', city: 'Karachi', demo: true }),
-  ]);
-  await Rule.create([
-    { code: 'R-EL-06', name: 'Minimum verified income', stage: 'eligibility', priority: 15, appliesTo: { products: [HBL_CODES.PL, HBL_CODES.IPF], segments: ['*'], jurisdictions: ['PK'] }, when: { all: [{ field: 'monthlyIncome', op: 'lt', value: 40000 }] }, then: { outcome: 'decline', reasonCode: 'ELIG_INCOME', stop: true }, enabled: true, status: 'active', version: 1, makerName: 'Credit policy', checkerName: 'Compliance' },
-    { code: 'DEALER_HIGH_TICKET', name: 'Dealer tickets above 2 million are reviewed', stage: 'policy', priority: 20, appliesTo: { products: [HBL_CODES.AL, HBL_CODES.AI], segments: ['*'], jurisdictions: ['PK'] }, when: { all: [{ field: 'channel', op: 'eq', value: 'dealer' }, { field: 'requestedAmount', op: 'gt', value: 2000000 }] }, then: { outcome: 'refer', reasonCode: 'DOA_ABOVE_STP', stop: false }, enabled: true, status: 'active', version: 1, makerName: 'Credit policy', checkerName: 'Compliance' },
-  ]);
-
-  const passwordHash = await hashPassword(PASSWORD);
-  const customers = {};
-  for (const person of people) {
-    const customer = await Customer.create({
-      tenantId: TENANT,
-      customerNo: `HBL-${person.key.toUpperCase()}`,
-      fullName: person.fullName,
-      nameUr: person.nameUr,
-      cnicEncrypted: encryptField(person.cnic),
-      cnicLast4: last4(person.cnic),
-      phoneEncrypted: encryptField(person.phone),
-      phoneLast4: last4(person.phone),
-      email: person.email,
-      dateOfBirth: new Date(person.dob),
-      age: ageFromDob(person.dob),
-      city: person.city,
-      segment: person.segment,
-      residency: person.residency || 'resident',
-      employmentType: person.employmentType,
-      employer: person.employer,
-      monthlyIncome: person.monthlyIncome || 0,
-      monthlyObligations: person.monthlyObligations || 0,
-      salaryMonths: person.salaryMonths || 0,
-      cashflowMonthly: person.cashflowMonthly || person.monthlyIncome || 0,
-      cashflowStability: person.cashflowStability || 50,
-      altDataQuality: person.altDataQuality || 0,
-      relationshipYears: person.relationshipYears || 0,
-      existingExposure: person.existingExposure || 0,
-      bureauScore: person.bureauScore || 0,
-      kycStatus: 'verified',
-      jurisdiction: person.jurisdiction || 'PK',
-      branchId: person.branchId,
-      accountMasked: person.accountMasked,
-      lifeEvents: person.lifeEvents || [],
-      salaryStopped: Boolean(person.salaryStopped),
-      pepFlag: Boolean(person.pepFlag),
-      holdout: Boolean(person.holdout),
-      onTimePayments: person.onTimePayments || 0,
-      blurb: person.blurb,
-      preferredChannel: 'app',
-    });
-    const user = await User.create({
-      email: person.email,
-      passwordHash,
-      name: person.fullName,
-      role: 'customer',
-      tenantId: TENANT,
-      branchId: person.branchId,
-      customerId: customer._id,
-      demoPersona: true,
-      status: 'active',
-    });
-    customer.userId = user._id;
-    await customer.save();
-    customers[person.key] = customer;
-  }
-
-  for (const [name, email, role, branchId, doaLimit] of staff) {
-    await User.create({
-      email, passwordHash, name, role, tenantId: TENANT, branchId, doaLimit,
-      dealerId: role === 'dealer' ? 'CLIFTON' : '',
-      skills: role === 'underwriter' ? ['personal', 'auto'] : [],
-      status: 'active',
-    });
-  }
-
-  const byCode = Object.fromEntries((await Product.find().lean()).map((product) => [product.code, product]));
-  const ayeshaLoanApp = await openCase({ customer: customers.ayesha, product: byCode[HBL_CODES.PL], amount: 250000, tenor: 12, hoursAgo: 24 * 200 });
-  const schedule = buildSchedule(250000, ayeshaLoanApp.indicativeRate, 12, ayeshaLoanApp.indicativeInstalment);
-  const loan = await LoanAccount.create({
+  await User.create({
+    username: 'admin',
+    name: 'System Administrator',
+    email: 'admin@local',
+    passwordHash,
+    mustChangePassword: true,
+    status: 'ACTIVE',
     tenantId: TENANT,
-    applicationId: ayeshaLoanApp._id,
-    customerId: customers.ayesha._id,
-    productCode: HBL_CODES.PL,
-    contractType: 'conventional',
-    principal: 250000,
-    rate: ayeshaLoanApp.indicativeRate,
-    tenorMonths: 12,
-    instalment: ayeshaLoanApp.indicativeInstalment,
-    disbursedAt: new Date(Date.now() - 180 * 24 * 3600 * 1000),
-    accountMasked: customers.ayesha.accountMasked,
-    schedule: schedule.map((row, index) => ({ ...row, status: index < 6 ? 'paid' : 'due' })),
-    paidCount: 6,
+    entityId: 'PK-01',
+    branchId: '0001',
+    roles: [{ roleId: superRole._id, scopeType: 'ALL', scopeId: '' }],
   });
-  ayeshaLoanApp.status = 'disbursed';
-  ayeshaLoanApp.loanId = loan._id;
-  ayeshaLoanApp.disbursedAt = loan.disbursedAt;
-  await ayeshaLoanApp.save();
 
-  await openCase({ customer: customers.farooq, product: byCode[HBL_CODES.PL], amount: 1200000, tenor: 36, hoursAgo: 6 });
-  await openCase({ customer: customers.nida, product: byCode[HBL_CODES.PL], amount: 600000, tenor: 24, hoursAgo: 3 });
-  const hamza = await openCase({ customer: customers.hamza, product: byCode[HBL_CODES.SW], amount: 6000000, tenor: 12, channel: 'assisted', hoursAgo: 5 });
-  hamza.votes.push({ by: 'Sadia Rahman', role: 'credit_officer', vote: 'approve', comment: 'Cash flow is close to the cover test. I support it with a stock report.', at: new Date() });
-  hamza.schemeCode = 'SME_GUARANTEE';
-  await hamza.save();
-  await openCase({ customer: customers.adeel, product: byCode[HBL_CODES.PL], amount: 500000, tenor: 24, hoursAgo: 1 });
-  const usman = await openCase({ customer: customers.usman, product: byCode[HBL_CODES.AI], amount: 900000, tenor: 36, channel: 'dealer', dealerId: 'CLIFTON', hoursAgo: 8, asset: { description: '2024 Toyota Yaris', value: 4500000 } });
-  if (usman.status === 'approved') {
-    usman.status = 'pending_fulfilment';
-    await usman.save();
+  await SodRule.create([
+    { code: 'SOD-APP', permissionA: 'application:create', permissionB: 'application:approve', level: 'CASE', action: 'BLOCK', description: 'The maker of an application cannot approve it' },
+    { code: 'SOD-GL', permissionA: 'gl:manual_journal', permissionB: 'gl:approve_journal', level: 'CASE', action: 'BLOCK', description: 'The maker of a journal cannot approve it' },
+    { code: 'SOD-SET', permissionA: 'collection:settle_propose', permissionB: 'collection:settle_approve', level: 'CASE', action: 'BLOCK', description: 'The maker of a settlement cannot approve it' },
+    { code: 'SOD-DISB', permissionA: 'disbursement:initiate', permissionB: 'disbursement:authorise', level: 'CASE', action: 'WARN', description: 'Disbursement initiation and authorisation should be separate' },
+  ]);
+
+  await FieldDefinition.create(systemFields);
+  const personalSections = [
+    section('facility', 'Facility', [field('requested_amount'), field('tenor_months'), field('purpose_code', false)]),
+    section('income', 'Income', [field('employment_type'), field('employer_name', false), field('gross_monthly_income'), field('net_monthly_income'), field('monthly_obligations', false)]),
+  ];
+  for (const code of ['FORM-PF-SAL', 'FORM-PF-ISL', 'FORM-AUTO-IJR']) {
+    const productCode = code.replace('FORM-', '');
+    const sections = JSON.parse(JSON.stringify(personalSections));
+    const form = await Form.create({
+      code, name: `${productCode} application`, status: 'ACTIVE', publishedVersion: 1,
+      binding: { productCode, stage: 'S0', channel: 'MOBILE', applicantRole: 'PRIMARY' },
+      sections,
+    });
+    await FormVersion.create({ formId: form._id, code, version: 1, sections, binding: form.binding, hash: code, publishedAt: new Date() });
   }
 
-  const validUntil = new Date(Date.now() + 14 * 24 * 3600 * 1000);
-  await Offer.create([
-    { tenantId: TENANT, customerId: customers.ayesha._id, productCode: HBL_CODES.PL, limit: 1500000, tenorMonths: 36, propensity: 86, channel: 'app', message: 'You are pre-approved for an HBL Personal Loan.', validUntil },
-    { tenantId: TENANT, customerId: customers.ayesha._id, productCode: HBL_CODES.AI, limit: 3000000, tenorMonths: 36, propensity: 71, channel: 'app', message: 'Islamic Auto Ijarah is open if you are choosing a car.', validUntil },
-    { tenantId: TENANT, customerId: customers.sana._id, productCode: HBL_CODES.IPF, limit: 400000, tenorMonths: 24, propensity: 64, channel: 'app', message: 'Islamic personal finance is open up to this limit.', validUntil },
+  await Workflow.create({ code: 'WF-RETAIL', name: 'Retail origination', status: 'ACTIVE', publishedVersion: 0, stages: workflowStages, transitions });
+  await MasterList.create([
+    { code: 'cities', name: 'Cities', values: ['Karachi', 'Lahore', 'Islamabad', 'Rawalpindi', 'Faisalabad'].map((name, index) => ({ code: name.toUpperCase(), value: { en: name, ur: name, ar: name }, sortOrder: index, status: 'ACTIVE' })) },
+    { code: 'provinces', name: 'Provinces', values: ['Sindh', 'Punjab', 'Khyber Pakhtunkhwa', 'Balochistan', 'Islamabad'].map((name) => ({ code: name.slice(0, 3).toUpperCase(), value: { en: name }, status: 'ACTIVE' })) },
+    { code: 'employers', name: 'Employers', values: [
+      { code: 'NORTHWIND', value: { en: 'Northwind Digital' }, attributes: { category: 'A' }, status: 'ACTIVE' },
+      { code: 'CITY-SCHOOLS', value: { en: 'City Schools' }, attributes: { category: 'B' }, status: 'ACTIVE' },
+      { code: 'PUBLIC-WORKS', value: { en: 'Public Works' }, attributes: { category: 'A' }, status: 'ACTIVE' },
+    ] },
+    { code: 'industries', name: 'Industries', values: ['Services', 'Manufacturing', 'Trade'].map((name) => ({ code: name.toUpperCase(), value: { en: name }, status: 'ACTIVE' })) },
+    { code: 'purpose_codes', name: 'Purpose codes', values: ['Education', 'Medical', 'Home improvement', 'Working capital'].map((name) => ({ code: name.slice(0, 4).toUpperCase(), value: { en: name }, status: 'ACTIVE' })) },
+    { code: 'document_types', name: 'Document types', values: ['Identity card', 'Salary slip', 'Bank statement'].map((name) => ({ code: name.slice(0, 4).toUpperCase(), value: { en: name }, status: 'ACTIVE' })) },
+    { code: 'reason_codes', name: 'Reason codes', values: ['Income', 'Policy', 'Customer request', 'Document'].map((name) => ({ code: name.slice(0, 4).toUpperCase(), value: { en: name }, status: 'ACTIVE' })) },
+    { code: 'banks', name: 'Banks', values: [{ code: 'NB', value: { en: 'Noor Horizon Bank' }, attributes: { imd: '999999' }, status: 'ACTIVE' }] },
+    { code: 'wallets', name: 'Wallets', values: [{ code: 'EASY', value: { en: 'Demo Wallet' }, status: 'ACTIVE' }] },
+    { code: 'relationships', name: 'Relationships', values: ['Self', 'Spouse', 'Parent'].map((name) => ({ code: name.toUpperCase(), value: { en: name }, status: 'ACTIVE' })) },
+    { code: 'collateral_types', name: 'Collateral types', values: ['Vehicle', 'Property', 'Cash'].map((name) => ({ code: name.toUpperCase(), value: { en: name }, status: 'ACTIVE' })) },
+    { code: 'colours', name: 'Colours', values: ['White', 'Black', 'Silver', 'Blue'].map((name) => ({ code: name.toUpperCase(), value: { en: name }, status: 'ACTIVE' })) },
+    { code: 'genders', name: 'Genders', values: ['Female', 'Male'].map((name) => ({ code: name[0], value: { en: name }, status: 'ACTIVE' })) },
+    { code: 'residence_types', name: 'Residence types', values: ['Owned', 'Rented', 'Family'].map((name) => ({ code: name.toUpperCase(), value: { en: name }, status: 'ACTIVE' })) },
+    { code: 'employment_types', name: 'Employment types', values: ['Salaried', 'Self employed'].map((name) => ({ code: name.toUpperCase().replace(' ', '_'), value: { en: name }, status: 'ACTIVE' })) },
   ]);
-  await Campaign.create({ tenantId: TENANT, name: 'Salary-day personal loan', segment: 'salaried', channel: 'app', productCode: HBL_CODES.PL, message: 'Your salary just landed. A personal loan limit is ready if you want it.', discountRate: 0, status: 'active', frequencyCap: 2, holdoutPercent: 10 });
-  await Scheme.create([
-    { code: 'SME_GUARANTEE', name: 'SME guarantee scheme', authority: 'Illustrative SBP-style scheme', jurisdiction: 'PK', productCodes: [HBL_CODES.SW, HBL_CODES.SM], coveragePercent: 60, maxAmount: 10000000, eligibilityNote: 'Trading SMEs with verified turnover and DSCR at or above 1.25.', reportingCode: 'SME-G-01', illustrative: true },
-    { code: 'HOUSING_SUPPORT', name: 'Housing support scheme', authority: 'Illustrative housing scheme', jurisdiction: 'PK', productCodes: [HBL_CODES.HL, HBL_CODES.HD], coveragePercent: 0, maxAmount: 15000000, eligibilityNote: 'First home, within the configured price cap.', reportingCode: 'HSG-01', illustrative: true },
-  ]);
-  await Dealer.create({ code: 'CLIFTON', name: 'Clifton Motors', city: 'Karachi', category: 'auto', settlementAccount: '****9090' });
-  await EarlyWarning.create({ tenantId: TENANT, customerId: customers.bilal._id, code: 'SALARY_STOP', severity: 'high', title: 'Salary credits have stopped', detail: 'No salary credit in the last cycle. Do not offer new credit.', recommendedAction: 'Soft contact and a restructure conversation. No new limit.', status: 'open' });
-  await ModelCard.create([
-    { code: 'SC-RET-UNS', name: 'Retail unsecured scorecard', purpose: 'Illustrative application score for personal loans. Cut-offs in the BRD are 640 approve and 560 refer on a 300-900 scale; this demo keeps a 0-100 weighted card until Model Risk replaces it.', owner: 'Data science', status: 'champion', dataUsed: ['Bureau', 'Salary continuity', 'Affordability headroom', 'Relationship'], limits: 'Retail unsecured only. Not for SME obligor rating.', metrics: { gini: 0.41, ks: 0.32, psi: 0.06, overrideRate: 0.08 }, fairness: 'Approval gap across gender proxy and city is inside the 5 point monitoring band on the last sample.', validator: 'Independent model risk', validatedAt: new Date(), monitoring: 'Monthly PSI, Gini/KS and override review.' },
-    { code: 'SC-RET-UNS-CHALLENGER', name: 'Retail unsecured challenger', purpose: 'Shadow model. Not used for decisions.', owner: 'Data science', status: 'challenger', dataUsed: ['Champion features', 'Utility payment regularity'], limits: 'Shadow mode only.', metrics: { gini: 0.44, ks: 0.34, psi: 0.11, overrideRate: 0 }, fairness: 'Under review.', validator: 'Pending', monitoring: 'Shadow decisions stored beside the champion.' },
-  ]);
-  await DocumentTemplate.create([
-    { code: 'kfs-pk', name: 'Key facts statement', jurisdiction: 'PK', kind: 'disclosure', body: 'Amount, tenor, instalment, total cost, fees and cooling-off.' },
-    { code: 'ijarah-lease', name: 'Ijarah lease', jurisdiction: 'PK', kind: 'islamic', body: 'Lease starts only after ownership and possession are evidenced.' },
-  ]);
-  await AuditLog.create({ tenantId: TENANT, actorName: 'Seed', actorRole: 'system', action: 'seed', resource: 'platform', detail: { note: 'Demo tenant Habib Bank Limited' } });
 
-  console.log('Seeded HBL LOS');
-  console.log('Customer demo entry is on the welcome screen. Staff password: Los@Demo2026');
-  process.exit(0);
+  await Branch.create([
+    { code: '0001', name: 'Karachi Clifton', regionCode: 'SOUTH', entityId: 'PK-01' },
+    { code: '0002', name: 'Karachi Gulshan', regionCode: 'SOUTH', entityId: 'PK-01' },
+    { code: '0003', name: 'Lahore Gulberg', regionCode: 'NORTH', entityId: 'PK-01' },
+    { code: '0004', name: 'Islamabad F-7', regionCode: 'NORTH', entityId: 'PK-01' },
+  ]);
+  await Entity.create({ code: 'PK-01', name: 'Pakistan', currency: 'PKR', businessDate: new Date().toISOString().slice(0, 10), status: 'ACTIVE' });
+  await Holiday.create({ entityId: 'PK-01', date: `${new Date().getFullYear()}-12-25`, name: 'Year-end holiday', status: 'ACTIVE' });
+
+  await GLAccount.create(accounts.map(([code, name, type]) => ({ code, name, type, currency: 'PKR', memo: type === 'MEMO', status: 'ACTIVE' })));
+  await AccountingTemplate.create(Object.entries(events).map(([eventCode, [name, legs]]) => ({ eventCode, name, legs, status: 'ACTIVE' })));
+  ['E7', 'E8', 'E9', 'E10', 'E11', 'E13', 'E18', 'E19', 'E20', 'E21'].forEach(() => {});
+  await AccountingTemplate.create(['E7', 'E8', 'E9', 'E10', 'E11', 'E13', 'E18', 'E19', 'E20', 'E21'].map((eventCode) => ({
+    eventCode, name: eventCode, legs: [leg('DR', '1000', '0', 'Bank'), leg('CR', '1000', '0', 'Bank')], status: 'ACTIVE',
+  })));
+
+  await ClassificationRegime.create({
+    code: 'PK-CONSUMER',
+    name: 'Pakistan consumer',
+    status: 'ACTIVE',
+    bands: [
+      { from: 0, to: 89, category: 'Regular', provisionRate: 0, bucket: 'Current' },
+      { from: 90, to: 179, category: 'Substandard', provisionRate: 0.25, bucket: '90+' },
+      { from: 180, to: 364, category: 'Doubtful', provisionRate: 0.5, bucket: '180+' },
+      { from: 365, to: 99999, category: 'Loss', provisionRate: 1, bucket: '365+' },
+    ],
+    ifrs: { stage1: [0, 59], stage2: [60, 89], stage3: [90, 99999] },
+    pdLgd: { pd: { 1: 0.015, 2: 0.08, 3: 0.4 }, lgd: { secured: 0.35, unsecured: 0.65 } },
+  });
+
+  await ConfigEntry.create([
+    config('regulatory.dbr', 'system', {}, { maxDbr: 0.4, minAge: 21, maxAge: 60, maxAgeAtMaturity: 65, offerValidityDays: 7 }),
+    config('pricing.bands', 'system', {}, { floorRate: 0.08, capRate: 0.28, relationshipYears: 3, relationshipDiscount: 0.005, grades: [{ minScore: 80, premium: 0, label: 'A' }, { minScore: 72, premium: 0.005, label: 'B' }, { minScore: 55, premium: 0.015, label: 'C' }] }),
+    config('doa.matrix', 'system', {}, { stpLimit: 1500000, officerLimit: 5000000 }),
+    config('fraud.thresholds', 'system', {}, { duplicateRefer: 2, duplicateDecline: 4 }),
+    config('islamic.sequences', 'system', {}, SEQUENCES),
+    config('bank.profile', 'tenant', { tenantId: TENANT }, { name: 'Noor Horizon Bank', shortName: 'Noor Horizon', city: 'Karachi', demo: true }),
+    config('security.allowSelfAuthorisation', 'system', {}, { enabled: true }),
+    config('security.mfaRequired', 'system', {}, { enabled: false }),
+  ]);
+
+  await Scorecard.create({
+    code: 'SC-RET-UNS', name: 'Retail unsecured scorecard', version: 1, status: 'active', champion: true,
+    products: ['PF-SAL', 'PF-ISL', 'AUTO-IJR'], segments: ['salaried'], approveCutoff: 60, referCutoff: 45,
+    factors: [
+      { key: 'bureauScore', label: 'Bureau', weight: 40, bands: bands.bureau },
+      { key: 'capacityScore', label: 'Capacity', weight: 25, bands: bands.capacity },
+      { key: 'salaryMonths', label: 'Salary continuity', weight: 15, bands: bands.salary },
+      { key: 'relationshipYears', label: 'Relationship', weight: 10, bands: bands.years },
+      { key: 'cashflowStability', label: 'Stability', weight: 10, bands: bands.stability },
+    ],
+    makerName: 'Seed', checkerName: 'Seed',
+  });
+
+  await Rule.create([
+    { code: 'R-EL-INCOME', name: 'Minimum gross income', stage: 'eligibility', ruleType: 'ELIGIBILITY', priority: 10, appliesTo: { products: ['*'], segments: ['*'], jurisdictions: ['PK'] }, when: { all: [{ field: 'gross_monthly_income', op: 'lt', value: 40000 }] }, then: { outcome: 'decline', reasonCode: 'ELIG_INCOME', stop: true }, enabled: true, status: 'active', version: 1 },
+    { code: 'R-POL-AMOUNT', name: 'Large ticket deviation', stage: 'policy', ruleType: 'POLICY', deviationLevel: 'D1', priority: 20, appliesTo: { products: ['*'], segments: ['*'], jurisdictions: ['PK'] }, when: { all: [{ field: 'requestedAmount', op: 'gt', value: 2500000 }] }, then: { outcome: 'refer', reasonCode: 'POLICY_AMOUNT', stop: false, level: 'D1' }, enabled: true, status: 'active', version: 1 },
+  ]);
+
+  await Product.create([
+    product({ code: 'PF-SAL', shortCode: 'PFS', name: 'Personal Finance Salaried', family: 'PERSONAL', structure: 'CONVENTIONAL', contractType: 'conventional', segment: 'salaried', minAmount: 50000, maxAmount: 3000000, minTenor: 6, maxTenor: 60, baseRate: 0.2, summary: 'Instalment finance for salaried customers.', presentation: { cardTitle: 'Personal Finance', shortDescription: 'Salaried personal finance up to the published limit.', benefits: ['Fixed instalment', 'No hidden fee'], displayOrder: 1 } }),
+    product({ code: 'PF-ISL', shortCode: 'PFI', name: 'Islamic Personal Finance Murabaha', family: 'PERSONAL', structure: 'MURABAHA', contractType: 'murabaha', segment: 'salaried', minAmount: 50000, maxAmount: 3000000, minTenor: 6, maxTenor: 60, baseRate: 0.18, latePaymentCharity: true, summary: 'Murabaha personal finance.', presentation: { cardTitle: 'Islamic Personal Finance', shortDescription: 'Murabaha finance with a declared profit.', benefits: ['Declared profit', 'Charity on late payment'], displayOrder: 2 } }),
+    product({ code: 'AUTO-IJR', shortCode: 'AIJ', name: 'Auto Ijarah', family: 'AUTO', structure: 'IJARAH', contractType: 'ijarah', segment: 'salaried', minAmount: 300000, maxAmount: 8000000, minTenor: 12, maxTenor: 60, baseRate: 0.16, latePaymentCharity: true, summary: 'Vehicle ijarah.', presentation: { cardTitle: 'Auto Ijarah', shortDescription: 'Use a vehicle under ijarah and own it at the end.', benefits: ['Vehicle use', 'Ownership path'], displayOrder: 3 } }),
+  ]);
+
+  const notices = [
+    ['OTP_REGISTER', 'SMS', 'Verification code'],
+    ['OTP_OFFER', 'SMS', 'Offer code'],
+    ['SUBMITTED', 'IN_APP', 'Application received'],
+    ['UNDER_REVIEW', 'IN_APP', 'Under review'],
+    ['APPROVED', 'IN_APP', 'Approved — offer ready'],
+    ['DECLINED', 'IN_APP', 'Application update'],
+    ['DOC_REJECTED', 'IN_APP', 'Action needed'],
+    ['DISBURSED', 'IN_APP', 'Funds sent'],
+    ['PAYMENT_RECEIVED', 'IN_APP', 'Payment received'],
+    ['INSTALMENT_REMINDER', 'SMS', 'Instalment reminder'],
+    ['OVERDUE', 'SMS', 'Payment overdue'],
+    ['ACTION_NEEDED', 'IN_APP', 'Action needed'],
+  ];
+  await Template.create(notices.map(([code, channel, subject]) => ({ code, kind: code, name: subject, channel, subject, body: '{{fallback}}', status: 'ACTIVE' })));
+  await EscalationRule.create({ code: 'ESC-SLA', name: 'Stage SLA', trigger: 'SLA_BREACH', clockHours: 16, levels: [{ level: 1, permission: 'application:approve' }], status: 'ACTIVE' });
+  await IntegrationConfig.create([
+    ['IDENTITY', 'Identity', 'Identity'],
+    ['BUREAU', 'Bureau', 'Bureau'],
+    ['AML', 'AML screening', 'AML'],
+    ['CBS', 'Core banking', 'Core'],
+    ['PAYMENT', 'Payments', 'Payments'],
+    ['SMS', 'SMS', 'Messaging'],
+    ['EMAIL', 'Email', 'Messaging'],
+  ].map(([code, name, domain]) => ({ code, name, domain, implementation: 'mock', enabled: true, fallback: code === 'BUREAU' ? 'MANUAL' : 'PROCEED_FLAG', status: 'ACTIVE' })));
+
+  const reports = [
+    ['APP-REG', 'Application register', 'applications'],
+    ['SANCTION', 'Sanction and deviation register', 'applications'],
+    ['DISB', 'Disbursement register', 'loans'],
+    ['RECEIPTS', 'Repayment register', 'transactions'],
+    ['DPD', 'Overdue and DPD ageing', 'loans'],
+    ['CLASS', 'Classification statement', 'loans'],
+    ['ECL', 'IFRS 9 stage', 'loans'],
+    ['WRITEOFF', 'Write-off register', 'loans'],
+    ['RESTRUCTURE', 'Restructured loans', 'loans'],
+    ['CONSENT', 'Consent register', 'customers'],
+    ['COMPLAINT', 'Complaints register', 'customers'],
+  ];
+  await ReportDefinition.create(reports.map(([code, name, dataSource]) => ({ code, name, purpose: name, dataSource, columns: [], status: 'ACTIVE' })));
+
+  const users = await User.countDocuments();
+  console.log(`Seed complete. Staff users: ${users}. Sign in as admin and change the password from ADMIN_INITIAL_PASSWORD.`);
+  if (disconnect) await mongoose.disconnect();
 }
 
-seed().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+export async function runSeedConnected() {
+  return runSeed({ disconnect: false });
+}
+
+const invoked = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
+if (invoked) {
+  runSeed().catch((err) => {
+    console.error(err.message);
+    process.exit(1);
+  });
+}

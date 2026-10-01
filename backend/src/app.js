@@ -22,7 +22,10 @@ import earlyWarningRoutes from './modules/earlywarning/routes/earlyWarningRoutes
 import modelRiskRoutes from './modules/modelrisk/routes/modelRiskRoutes.js';
 import schemeRoutes from './modules/schemes/routes/schemeRoutes.js';
 import integrationRoutes from './modules/integrations/routes/integrationRoutes.js';
-import platformRoutes from './modules/platform/routes.js';
+import adminRoutes from './routes/adminRoutes.js';
+import configRoutes from './routes/configRoutes.js';
+import channelRoutes from './routes/channelRoutes.js';
+import opsRoutes from './routes/opsRoutes.js';
 
 export function createApp() {
   const app = express();
@@ -36,6 +39,14 @@ export function createApp() {
   app.get('/api/health', (req, res) => {
     res.json({ ok: true, service: 'lending-platform', demoMode: env.demoMode });
   });
+  const opsPrefixes = ['/dashboard', '/queue', '/applications', '/customers', '/loans', '/gl', '/eod', '/collections', '/reports', '/complaints', '/integrations', '/audit', '/provisioning'];
+  app.use('/api', (req, res, next) => {
+    if (opsPrefixes.some((prefix) => req.path === prefix || req.path.startsWith(`${prefix}/`))) return opsRoutes(req, res, next);
+    return next();
+  });
+  app.use('/api/admin', adminRoutes);
+  app.use('/api/config', configRoutes);
+  app.use('/api/channel', channelRoutes);
   app.use('/api/identity', identityRoutes);
   app.use('/api/customers', customerRoutes);
   app.use('/api/products', productRoutes);
@@ -53,7 +64,6 @@ export function createApp() {
   app.use('/api/model-risk', modelRiskRoutes);
   app.use('/api/schemes', schemeRoutes);
   app.use('/api/integrations', integrationRoutes);
-  app.use('/api/platform', platformRoutes);
   app.use(notFound);
   app.use(errorHandler);
   return app;
