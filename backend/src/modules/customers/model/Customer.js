@@ -1,0 +1,71 @@
+import mongoose from 'mongoose';
+
+const customerSchema = new mongoose.Schema(
+  {
+    tenantId: { type: String, index: true },
+    customerNo: { type: String, unique: true },
+    fullName: String,
+    nameUr: String,
+    cnicEncrypted: String,
+    cnicLast4: String,
+    phoneEncrypted: String,
+    phoneLast4: String,
+    email: String,
+    dateOfBirth: Date,
+    age: Number,
+    city: String,
+    segment: { type: String, index: true },
+    residency: { type: String, default: 'resident' },
+    employmentType: String,
+    employer: String,
+    monthlyIncome: Number,
+    monthlyObligations: Number,
+    salaryMonths: Number,
+    cashflowMonthly: Number,
+    cashflowStability: Number,
+    altDataQuality: Number,
+    relationshipYears: Number,
+    existingExposure: { type: Number, default: 0 },
+    bureauScore: Number,
+    bureauWorstDpd: { type: Number, default: 0 },
+    kycStatus: { type: String, default: 'pending' },
+    preferredLanguage: { type: String, default: 'en' },
+    preferredChannel: { type: String, default: 'app' },
+    lifeEvents: { type: [String], default: [] },
+    simulatorViews: { type: Number, default: 0 },
+    salaryStopped: { type: Boolean, default: false },
+    sanctionsFlag: { type: Boolean, default: false },
+    pepFlag: { type: Boolean, default: false },
+    holdout: { type: Boolean, default: false },
+    marketingRevoked: { type: Boolean, default: false },
+    contactsLast7Days: { type: Number, default: 0 },
+    onTimePayments: { type: Number, default: 0 },
+    jurisdiction: { type: String, default: 'PK' },
+    branchId: String,
+    accountMasked: String,
+    blurb: String,
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  },
+  { timestamps: true },
+);
+
+export const Customer = mongoose.model('Customer', customerSchema);
+
+const consentSchema = new mongoose.Schema(
+  {
+    tenantId: String,
+    customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', index: true },
+    applicationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Application' },
+    purpose: { type: String, required: true },
+    scope: String,
+    channel: String,
+    textVersion: { type: String, default: 'kfs-consent-v1' },
+    grantedAt: { type: Date, default: Date.now },
+    expiresAt: Date,
+    revokedAt: Date,
+    actorId: String,
+  },
+  { timestamps: true },
+);
+
+export const Consent = mongoose.model('Consent', consentSchema);

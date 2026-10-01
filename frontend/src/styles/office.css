@@ -1,0 +1,121 @@
+.office {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 264px minmax(0, 1fr);
+  grid-template-rows: 64px minmax(0, 1fr) 28px;
+  background: var(--neutral-50);
+  color: var(--neutral-800);
+}
+.topbar {
+  grid-column: 1 / -1;
+  background: var(--navy-900);
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+}
+.topbar .entity { font-weight: 650; letter-spacing: 0.02em; }
+.topbar input {
+  flex: 1;
+  max-width: 520px;
+  height: 36px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0 12px;
+  background: rgba(255,255,255,0.12);
+  color: white;
+}
+.topbar input::placeholder { color: rgba(255,255,255,0.62); }
+.topbar .spacer { margin-left: auto; display: flex; gap: 16px; align-items: center; font-size: 13px; }
+.side {
+  background: var(--navy-900);
+  color: #e7eaf6;
+  padding: 12px 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: auto;
+}
+.brand small { display: block; color: var(--sky-200); letter-spacing: 0.14em; font-size: 11px; }
+.brand strong { font-family: var(--display); font-size: 22px; font-weight: 650; }
+.nav-group { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(231,234,246,0.45); margin: 14px 8px 6px; }
+.side a {
+  display: block; text-decoration: none; color: rgba(231,234,246,0.88);
+  padding: 8px 10px; border-radius: 8px; font-size: 14px;
+  border-left: 3px solid transparent;
+}
+.side a.active { background: var(--navy-700); color: white; border-left-color: var(--royal-600); }
+.side a:hover { background: var(--navy-700); }
+.who { margin-top: auto; font-size: 13px; padding: 10px; border-top: 1px solid rgba(255,255,255,0.08); }
+.main { padding: 24px; min-width: 0; overflow: auto; }
+.statusbar {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  padding: 0 16px;
+  background: var(--neutral-0);
+  border-top: 1px solid var(--neutral-200);
+  color: var(--neutral-500);
+  font-size: 12px;
+}
+.search-hits { position: absolute; top: 52px; left: 280px; width: min(520px, 70vw); background: white; color: var(--ink); border: 1px solid var(--neutral-200); border-radius: 8px; z-index: 5; }
+.search-hits a { display: block; padding: 8px 12px; text-decoration: none; }
+.search-hits a:hover { background: var(--sky-100); }
+.main-top { display: flex; justify-content: space-between; gap: 16px; align-items: flex-end; margin-bottom: 16px; }
+.main h1 { font-family: var(--display); font-weight: 560; font-size: 36px; margin: 0; }
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.kpi, .panel {
+  background: var(--neutral-0); border: 1px solid var(--neutral-200); border-radius: 8px; padding: 14px 16px;
+}
+.kpi b { display: block; font-variant-numeric: tabular-nums; font-size: 22px; margin-top: 6px; color: var(--royal-600); }
+.panel { margin-top: 12px; }
+.panel h2 { margin: 0 0 10px; font-size: 16px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--navy-900); padding: 8px; background: var(--neutral-50); position: sticky; top: 0; }
+td { padding: 10px 8px; border-top: 1px solid var(--line); vertical-align: top; font-variant-numeric: tabular-nums; }
+tbody tr:nth-child(even) { background: var(--sky-100); }
+tbody tr:hover { background: var(--sky-200); }
+tr.click:hover { cursor: pointer; }
+.split { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 12px; }
+.bar { height: 8px; background: #efe7da; border-radius: 99px; overflow: hidden; }
+.bar span { display: block; height: 100%; background: var(--royal-600); }
+.field { display: grid; gap: 6px; margin-bottom: 10px; font-size: 14px; }
+.field input, .field select, .field textarea {
+  border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: white;
+}
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.office .primary, .office .ghost { width: auto; margin: 0; }
+.login-office {
+  min-height: 100dvh; display: grid; grid-template-columns: 1.1fr 0.9fr;
+  background: var(--navy-900); color: white;
+}
+.login-office form, .staff-grid { background: var(--paper); color: var(--ink); }
+.login-copy { padding: 64px; }
+.login-copy h1 { font-family: var(--display); font-size: 64px; line-height: 0.95; font-weight: 520; }
+.staff-grid { padding: 28px; overflow: auto; display: grid; gap: 8px; align-content: start; }
+.staff-grid button { text-align: left; }
+.chain { display: grid; gap: 8px; }
+.chain article { border-left: 3px solid var(--royal-600); padding: 8px 12px; background: white; border-radius: 0 12px 12px 0; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 2px 8px; font-size: 12px; font-weight: 650; }
+.chip.ok { background: rgba(18,122,75,0.12); color: var(--success-600); }
+.chip.warn { background: rgba(178,106,0,0.12); color: var(--warning-600); }
+.chip.bad { background: rgba(192,38,45,0.12); color: var(--danger-600); }
+.chip.info { background: rgba(27,44,193,0.12); color: var(--royal-600); }
+.wizard { display: grid; grid-template-columns: 240px 1fr; gap: 16px; }
+.wizard ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.wizard li { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--neutral-200); background: white; }
+.wizard li.on { border-color: var(--royal-600); background: var(--royal-50); }
+.office .primary { background: var(--royal-600); color: white; border-radius: 8px; padding: 8px 14px; }
+.office .ghost { background: transparent; color: var(--royal-600); border: 1px solid var(--periwinkle-400); border-radius: 8px; padding: 8px 14px; }
+.office .danger { background: var(--danger-600); color: white; border: 0; border-radius: 8px; padding: 8px 14px; }
+.banner { background: var(--sky-200); color: var(--navy-900); border-radius: 8px; padding: 12px 14px; }
+.main h1 { font-size: 28px; line-height: 36px; font-weight: 650; }
+.mono { font-family: var(--mono); font-size: 12px; }
+
+@media (max-width: 980px) {
+  .office { grid-template-columns: 1fr; }
+  .side { position: sticky; top: 0; z-index: 2; }
+  .kpis, .split, .login-office { grid-template-columns: 1fr; }
+}

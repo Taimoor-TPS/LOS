@@ -1,0 +1,13 @@
+node_modules/
+dist/
+document/
+docs/
+.env
+backend/.env
+backend/atlas-credentials.env
+*.log
+.DS_Store
+Loan_Origination_Systems_Benchmark.xlsx
+Security.docx
+Theme.docx
+Users.docx
